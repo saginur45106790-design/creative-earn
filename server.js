@@ -14,7 +14,6 @@ app.use(express.urlencoded({ limit: '100mb', extended: true }));
 app.use(express.static(__dirname));
 app.use('/uploads', express.static(uploadDir));
 
-// 🔐 এডমিন পাসওয়ার্ড ও স্থায়ী সিক্রেট টোকেন
 const ADMIN_PASSWORD = "sajibbithi2828@";
 const STATIC_ADMIN_TOKEN = "ADM_PERMANENT_SECRET_TOKEN_CE_2026";
 
@@ -67,16 +66,16 @@ app.post('/api/admin/login', (req, res) => {
   res.status(401).json({ status: 'error', message: 'ভুল এডমিন পাসওয়ার্ড!' });
 });
 
-// 🔐 কড়া সিকিউরিটি: যেকোনো এডমিন টোকেন আসলেই পারমিশন দিবে (কখনো লক করবে না)
+// 🔐 এডমিন অথেনটিকেশন মিডলওয়্যার (টোকেন থাকলেই অটো এপ্রুভ)
 function verifyAdminAuth(req, res, next) {
   const token = req.headers['authorization'];
-  if (token && (token.startsWith('ADM') || token === STATIC_ADMIN_TOKEN)) {
+  if (token) {
     return next();
   }
   res.status(401).json({ status: 'error', message: 'অননুমোদিত অ্যাক্সেস!' });
 }
 
-// 🔑 সাইনআপ (রেফারেল লজিক)
+// 🔑 সাইনআপ
 app.post('/api/auth/signup', (req, res) => {
   const { name, phone, email, password, refCode } = req.body;
 
@@ -269,7 +268,42 @@ app.post('/api/upload-audio', (req, res) => {
   });
 });
 
-// 👑 ADMIN APIs
+// 👑 ADMIN ALL API ENDPOINTS
+app.get('/api/admin/stats', verifyAdminAuth, (req, res) => {
+  res.json({
+    status: 'success',
+    pendingVideos: videoSubmissions.filter(v => v.status === 'In Review').length,
+    pendingAudios: audioSubmissions.filter(a => a.status === 'In Review').length,
+    pendingDeposits: depositRequests.filter(d => d.status === 'Pending').length,
+    pendingWithdraws: withdrawRequests.filter(w => w.status === 'Pending').length,
+    totalUsers: registeredUsers.length,
+    depositNumber: adminDepositNumber,
+    siteStats,
+    notice: globalNotice
+  });
+});
+
+app.post('/api/admin/update-deposit-number', verifyAdminAuth, (req, res) => {
+  const { depositNumber } = req.body;
+  if (depositNumber) { adminDepositNumber = depositNumber; return res.json({ status: 'success', message: 'ডিপোজিট নম্বর পরিবর্তন হয়েছে' }); }
+  res.status(400).json({ status: 'error', message: 'খালি নম্বর চলবে না' });
+});
+
+app.post('/api/admin/update-stats', verifyAdminAuth, (req, res) => {
+  const { activeUsersCount, totalWithdrawAmount } = req.body;
+  if (activeUsersCount !== undefined) siteStats.activeUsersCount = Number(activeUsersCount);
+  if (totalWithdrawAmount !== undefined) siteStats.totalWithdrawAmount = Number(totalWithdrawAmount);
+  res.json({ status: 'success', message: 'স্ট্যাটস আপডেট হয়েছে' });
+});
+
+app.post('/api/admin/update-notice', verifyAdminAuth, (req, res) => {
+  const { notice } = req.body;
+  if (notice) { globalNotice = notice; return res.json({ status: 'success', message: 'নোটিস আপডেট হয়েছে' }); }
+  res.status(400).json({ status: 'error', message: 'খালি নোটিস চলবে না' });
+});
+
+app.get('/api/admin/users', verifyAdminAuth, (req, res) => res.json({ status: 'success', users: registeredUsers }));
+
 app.get('/api/admin/pending-deposits', verifyAdminAuth, (req, res) => res.json({ status: 'success', deposits: depositRequests.filter(d => d.status === 'Pending') }));
 
 app.post('/api/admin/review-deposit', verifyAdminAuth, (req, res) => {
@@ -308,6 +342,22 @@ app.post('/api/admin/review-deposit', verifyAdminAuth, (req, res) => {
   res.status(404).json({ status: 'error', message: 'রিকোয়েস্ট পাওয়া যায়নি' });
 });
 
+app.get('/api/admin/pending-withdraws', verifyAdminAuth, (req, res) => res.json({ status: 'success', userLiveBalance: activeUser.balance, withdraws: withdrawRequests.filter(w => w.status === 'Pending') }));
+
+app.post('/api/admin/review-withdraw', verifyAdminAuth, (req, res) => {
+  const { id, status } = req.body;
+  const withReq = withdrawRequests.find(w => w.id === id);
+  if (withReq) {
+    withReq.status = status;
+    if (status === 'Rejected') {
+      const usr = registeredUsers.find(u => u.phone === withReq.userPhone);
+      if (usr) usr.balance += withReq.amount;
+    }
+    return res.json({ status: 'success', message: 'উইথড্র সফলভাবে আপডেট হয়েছে' });
+  }
+  res.status(404).json({ status: 'error', message: 'রিকোয়েস্ট পাওয়া যায়নি' });
+});
+
 app.get('/api/admin/pending-videos', verifyAdminAuth, (req, res) => res.json({ status: 'success', videos: videoSubmissions.filter(v => v.status === 'In Review') }));
 
 app.post('/api/admin/review-video', verifyAdminAuth, (req, res) => {
@@ -319,7 +369,7 @@ app.post('/api/admin/review-video', verifyAdminAuth, (req, res) => {
     video.rating = Number(rating) || 0;
     video.comment = comment || '';
     if (status === 'Approved') {
-      const usr = registeredUsers.find(u => u.phone === video.userPhone);
+      const usr = registeredUsers.find(usrItem => usrItem.phone === video.userPhone);
       if (usr) usr.balance += video.amount;
     }
     return res.json({ status: 'success', message: 'রিভিউ সম্পন্ন হয়েছে' });
@@ -327,10 +377,30 @@ app.post('/api/admin/review-video', verifyAdminAuth, (req, res) => {
   res.status(404).json({ status: 'error', message: 'ভিডিও পাওয়া যায়নি' });
 });
 
+app.get('/api/admin/pending-audios', verifyAdminAuth, (req, res) => res.json({ status: 'success', audios: audioSubmissions.filter(a => a.status === 'In Review') }));
+
+app.post('/api/admin/review-audio', verifyAdminAuth, (req, res) => {
+  const { id, status, amount, rating, comment } = req.body;
+  const audio = audioSubmissions.find(a => a.id === id);
+  if (audio) {
+    audio.status = status;
+    audio.amount = Number(amount) || 0;
+    audio.rating = Number(rating) || 0;
+    audio.comment = comment || '';
+    if (status === 'Approved') {
+      const usr = registeredUsers.find(usrItem => usrItem.phone === audio.userPhone);
+      if (usr) usr.balance += audio.amount;
+    }
+    return res.json({ status: 'success', message: 'অডিও রিভিউ সম্পন্ন হয়েছে' });
+  }
+  res.status(404).json({ status: 'error', message: 'অডিও পাওয়া যায়নি' });
+});
+
+// 📄 ALL HTML ROUTING
 function serveHtmlFile(res, fileName) {
   const filePath = path.join(__dirname, fileName);
   if (fs.existsSync(filePath)) return res.sendFile(filePath);
-  return res.status(404).send(`⚠️ ${fileName} পাওয়া যায়নি!`);
+  return res.status(404).send(`⚠️ ${fileName} ফাইলটি পাওয়া যায়নি!`);
 }
 
 app.get('/', (req, res) => serveHtmlFile(res, 'login.html'));
@@ -342,6 +412,11 @@ app.get('/support', (req, res) => serveHtmlFile(res, 'support.html'));
 app.get('/referral', (req, res) => serveHtmlFile(res, 'referral.html'));
 app.get('/admin-login', (req, res) => serveHtmlFile(res, 'admin-login.html'));
 app.get('/admin', (req, res) => serveHtmlFile(res, 'admin.html'));
+app.get('/admin-users', (req, res) => serveHtmlFile(res, 'admin-users.html'));
+app.get('/admin-support', (req, res) => serveHtmlFile(res, 'admin-support.html'));
 app.get('/admin-video-review', (req, res) => serveHtmlFile(res, 'admin-video-review.html'));
+app.get('/admin-audio-review', (req, res) => serveHtmlFile(res, 'admin-audio-review.html'));
+app.get('/admin-deposit-review', (req, res) => serveHtmlFile(res, 'admin-deposit-review.html'));
+app.get('/admin-withdraw-review', (req, res) => serveHtmlFile(res, 'admin-withdraw-review.html'));
 
 app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
