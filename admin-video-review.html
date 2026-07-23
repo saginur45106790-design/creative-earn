@@ -9,130 +9,124 @@
 </head>
 <body class="bg-[#0F172A] text-slate-100 min-h-screen p-4 pb-12 font-sans">
 
-  <!-- হেডার -->
   <header class="max-w-2xl mx-auto flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
-    <a href="/admin" class="text-slate-400 hover:text-white flex items-center gap-2 text-sm font-bold">
-      <i class="fa-solid fa-arrow-left"></i> এডমিন প্যানেল
-    </a>
-    <h1 class="text-base font-black text-amber-400">🎬 ভিডিও রিভিউ প্যানেল</h1>
+    <a href="/admin" class="text-slate-400 flex items-center gap-2 text-xs font-bold"><i class="fa-solid fa-arrow-left"></i> এডমিন প্যানেল</a>
+    <h1 class="text-sm font-black text-amber-400">🎬 এআই ভিডিও স্ক্যানার & রিভিউ</h1>
   </header>
 
-  <!-- ভিডিও লিস্ট -->
-  <main class="max-w-2xl mx-auto space-y-4" id="videoList">
-    <div class="text-center text-slate-400 text-sm py-10 animate-pulse">
-      ডাটা লোড হচ্ছে...
-    </div>
+  <main class="max-w-2xl mx-auto space-y-5" id="vList">
+    <div class="text-center text-slate-400 text-xs py-10 animate-pulse">ডাটা লোড হচ্ছে...</div>
   </main>
 
   <script>
-    const adminToken = localStorage.getItem('adminToken');
-    if (!adminToken) {
-      alert('অনুগ্রহ করে আগে এডমিন হিসেবে লগইন করুন!');
-      window.location.href = '/admin-login';
-    }
+    const adminToken = localStorage.getItem('adminToken') || localStorage.getItem('token');
 
-    function loadVideos() {
-      fetch('/api/admin/pending-videos', {
-        headers: { 'Authorization': adminToken }
-      })
+    function loadPendingVideos() {
+      fetch('/api/admin/pending-videos', { headers: { 'Authorization': adminToken } })
       .then(res => res.json())
       .then(data => {
-        const list = document.getElementById('videoList');
-        if (data.status !== 'success' || !data.videos || data.videos.length === 0) {
-          list.innerHTML = '<div class="text-center text-slate-500 py-10 bg-slate-900/50 rounded-2xl border border-slate-800">কোনো পেন্ডিং ভিডিও নেই!</div>';
+        const list = document.getElementById('vList');
+        if (!data.videos || data.videos.length === 0) {
+          list.innerHTML = '<div class="text-center text-slate-500 py-10 bg-slate-900 rounded-2xl border border-slate-800">কোনো পেন্ডিং ভিডিও নেই!</div>';
           return;
         }
 
-        list.innerHTML = data.videos.map(v => `
-          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-xl">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-              <div>
-                <h3 class="font-bold text-white text-sm">${v.userName}</h3>
-                <p class="text-xs text-slate-400">📞 ${v.userPhone} | 📁 ${v.category}</p>
-              </div>
-              <span class="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-500/30">
-                ${v.status}
-              </span>
-            </div>
+        list.innerHTML = data.videos.map(v => {
+          const isFaceMatch = v.faceMatchStatus === 'MATCHED';
+          const social = v.socialScan || { isDuplicate: false, platform: 'None' };
 
-            <!-- 📹 ভিডিও প্লেয়ার -->
-            <video controls src="${v.fileUrl}" class="w-full rounded-xl bg-black max-h-60 object-contain"></video>
-
-            <!-- 🔍 এআই ফেস ভেরিফাইড কনফার্মেশন -->
-            <div class="p-3 bg-emerald-950/40 border border-emerald-500/40 rounded-xl flex items-center justify-between">
-              <div class="flex items-center gap-2.5">
-                <i class="fa-solid fa-circle-check text-emerald-400 text-xl"></i>
+          return `
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 shadow-2xl">
+              <div class="flex justify-between items-center border-b border-slate-800 pb-2">
                 <div>
-                  <h4 class="text-xs font-bold text-emerald-300">অরিজিনাল ফেস ভেরিফাইড ✅</h4>
-                  <p class="text-[10px] text-slate-400">ইউজারের ফেসের সাথে আপলোড করা ভিডিওর ফেস ১০০% মিলেছে</p>
+                  <h3 class="font-bold text-white text-sm">${v.userName}</h3>
+                  <p class="text-[11px] text-slate-400">📞 ${v.userPhone}</p>
                 </div>
+                <span class="text-[10px] bg-indigo-500/20 text-indigo-300 font-bold px-2.5 py-0.5 rounded-full border border-indigo-500/30">${v.date}</span>
               </div>
-              <span class="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                MATCHED
-              </span>
-            </div>
 
-            <!-- 💵 পেমেন্ট & রেটিং ফর্ম -->
-            <div class="grid grid-cols-2 gap-2 text-xs">
-              <div>
-                <label class="text-slate-400 block mb-1">পুরস্কার টাকা (৳)</label>
-                <input type="number" id="amt_${v.id}" placeholder="যেমন: 20" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white outline-none focus:border-amber-500">
+              <!-- 📹 ভিডিও প্লেয়ার -->
+              <video controls src="${v.fileUrl}" class="w-full rounded-2xl bg-black max-h-60 object-contain border border-slate-800"></video>
+
+              <!-- 🤖 ১. এআই ফেস স্ক্যানার (টিক / ক্রস) -->
+              <div class="p-3 rounded-2xl border ${isFaceMatch ? 'bg-emerald-950/40 border-emerald-500/40' : 'bg-rose-950/40 border-rose-500/40'} flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <span class="text-2xl">${isFaceMatch ? '✅' : '❌'}</span>
+                  <div>
+                    <h4 class="text-xs font-bold ${isFaceMatch ? 'text-emerald-300' : 'text-rose-300'}">${isFaceMatch ? 'অরিজিনাল ফেস ভেরিফাইড (MATCHED)' : 'ফেস অমিল / সন্দেহজনক'}</h4>
+                    <p class="text-[10px] text-slate-400">ইউজারের তোলা ফেসের সাথে ভিডিওর ফেস শতভাগ মিলেছে</p>
+                  </div>
+                </div>
+                ${v.userFaceImage ? `<img src="${v.userFaceImage}" class="w-10 h-10 rounded-xl object-cover border border-indigo-500">` : ''}
               </div>
-              <div>
-                <label class="text-slate-400 block mb-1">রেটিং (১-৫)</label>
-                <input type="number" id="rate_${v.id}" placeholder="যেমন: 5" max="5" min="1" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white outline-none focus:border-amber-500">
+
+              <!-- 🌐 ২. এআই সোশ্যাল মিডিয়া ডুপ্লিকেট স্ক্যানার (TikTok / Facebook / YouTube) -->
+              <div class="p-3.5 rounded-2xl border ${social.isDuplicate ? 'bg-rose-950/60 border-rose-500' : 'bg-slate-950 border-slate-800'}">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex items-center gap-2.5">
+                    <span class="text-xl">${social.isDuplicate ? '🚨' : '🛡️'}</span>
+                    <div>
+                      <h4 class="text-xs font-black ${social.isDuplicate ? 'text-rose-400' : 'text-slate-300'}">
+                        ${social.isDuplicate ? `সতর্কতা: ${social.platform}-এ আপলোড পাওয়া গেছে! (${social.matchPercentage}% কপির মিল)` : 'অরিজিনাল কন্টেন্ট: কোনো সোশ্যাল মিডিয়ায় পাওয়া যায়নি'}
+                      </h4>
+                      <p class="text-[10px] text-slate-400 mt-0.5">
+                        ${social.isDuplicate ? 'এই ভিডিওটি অন্য প্ল্যাটফর্ম থেকে ডাউনলোড করে আপলোড করা হয়েছে।' : 'এআই স্ক্যানিং অনুযায়ী এটি সম্পূর্ণ নতুন ও অরিজিনাল ভিডিও।'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                ${social.isDuplicate ? `
+                  <button onclick="quickReject('${v.id}')" class="w-full mt-2.5 py-2 bg-rose-600/30 hover:bg-rose-600/50 text-rose-300 border border-rose-500/50 text-xs font-bold rounded-xl transition">
+                    🚫 নকল কন্টেন্ট হিসেবে সরাসরি রিজেক্ট করুন
+                  </button>
+                ` : ''}
+              </div>
+
+              <!-- 💵 পেমেন্ট & এপ্রুভাল -->
+              <div class="grid grid-cols-2 gap-2 text-xs pt-1">
+                <input type="number" id="amt_${v.id}" placeholder="পুরস্কারের টাকা (৳)" class="bg-slate-950 border border-slate-800 rounded-xl p-2 text-white">
+                <input type="number" id="rate_${v.id}" placeholder="রেটিং (১-৫)" value="5" class="bg-slate-950 border border-slate-800 rounded-xl p-2 text-white">
+              </div>
+
+              <div class="flex gap-2">
+                <button onclick="review('${v.id}', 'Approved')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 rounded-xl">
+                  <i class="fa-solid fa-check"></i> এপ্রুভ করুন
+                </button>
+                <button onclick="review('${v.id}', 'Rejected')" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold py-2.5 rounded-xl">
+                  <i class="fa-solid fa-xmark"></i> রিজেক্ট করুন
+                </button>
               </div>
             </div>
-
-            <div>
-              <label class="text-xs text-slate-400 block mb-1">এডমিন মন্তব্য (Optional)</label>
-              <input type="text" id="comm_${v.id}" placeholder="যেমন: চমৎকার ভিডিও হয়েছে!" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white outline-none focus:border-amber-500">
-            </div>
-
-            <!-- 🔘 এপ্রুভ / রিজেক্ট বাটন -->
-            <div class="flex items-center gap-2 pt-2">
-              <button onclick="reviewVideo('${v.id}', 'Approved')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 rounded-xl transition shadow-lg">
-                <i class="fa-solid fa-check"></i> এপ্রুভ করুন
-              </button>
-              <button onclick="reviewVideo('${v.id}', 'Rejected')" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold py-2.5 rounded-xl transition shadow-lg">
-                <i class="fa-solid fa-xmark"></i> রিজেক্ট করুন
-              </button>
-            </div>
-          </div>
-        `).join('');
-      })
-      .catch(err => {
-        document.getElementById('videoList').innerHTML = '<div class="text-center text-rose-400 py-10">ডাটা লোড করতে সমস্যা হয়েছে!</div>';
+          `;
+        }).join('');
       });
     }
 
-    function reviewVideo(id, status) {
-      const amount = document.getElementById('amt_' + id).value || 0;
-      const rating = document.getElementById('rate_' + id).value || 5;
-      const comment = document.getElementById('comm_' + id).value || '';
+    function quickReject(id) {
+      review(id, 'Rejected', 0, 1, 'TikTok/Social Media কপি ভিডিও পাওয়া গেছে');
+    }
+
+    function review(id, status, amtVal, rateVal, commVal) {
+      const amount = amtVal !== undefined ? amtVal : (document.getElementById('amt_' + id).value || 0);
+      const rating = rateVal !== undefined ? rateVal : (document.getElementById('rate_' + id).value || 5);
+      const comment = commVal !== undefined ? commVal : '';
 
       if (status === 'Approved' && amount <= 0) {
-        alert('অনুগ্রহ করে এপ্রুভ করার আগে পুরষ্কারের টাকা লিখুন!');
+        alert('এপ্রুভ করার আগে পুরষ্কারের টাকা দিন!');
         return;
       }
 
       fetch('/api/admin/review-video', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': adminToken
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': adminToken },
         body: JSON.stringify({ id, status, amount, rating, comment })
       })
       .then(res => res.json())
-      .then(data => {
-        alert(data.message);
-        loadVideos();
-      });
+      .then(data => { alert(data.message); loadPendingVideos(); });
     }
 
-    loadVideos();
+    loadPendingVideos();
   </script>
-
 </body>
 </html>
