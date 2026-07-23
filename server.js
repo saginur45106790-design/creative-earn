@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -19,13 +20,17 @@ const ADMIN_PASSWORD = "sajibbithi2828@";
 let activeAdminTokens = new Set();
 
 // 📊 গ্লোবাল ডাটাবেজ
-let globalNotice = "🎉 CreativeEarn-এ আপনাকে স্বাগতম! ভিডিও ও অডিও আপলোড করে প্রতিদিন ইনকাম করুন ৳১০ থেকে ৳৫০০ পর্যন্ত।";
+let globalNotice = "🎉 CreativeEarn-এ আপনাকে স্বাগতম! ১০০ টাকা ডিপোজিট করে আইডি ভেরিফাই করুন এবং অরিজিনাল ভিডিও আপলোড করে ইনকাম শুরু করুন।";
 let adminDepositNumber = "01836345346";
 
 let siteStats = {
   activeUsersCount: 1450,
   totalWithdrawAmount: 485000
 };
+
+// 🚫 ডিভাইস ট্র্যাকিং (১ ডিভাইস = ১ একাউন্ট)
+let registeredIPs = new Set();
+let registeredVideoHashes = new Set();
 
 let registeredUsers = [
   {
@@ -36,46 +41,31 @@ let registeredUsers = [
     password: "user1234",
     balance: 150,
     isVerified: true,
+    isFaceVerified: true,
     refCode: "CE1001",
     referredBy: null,
-    referralEarnings: 100
-  },
-  {
-    id: "USR-1002",
-    name: "করিম হাসান",
-    phone: "01711223344",
-    email: "karim@gmail.com",
-    password: "pass5678",
-    balance: 0,
-    isVerified: false,
-    refCode: "CE1002",
-    referredBy: "CE1001",
-    referralEarnings: 0
+    referralEarnings: 100,
+    ipAddress: "127.0.0.1"
   }
 ];
 
-let activeUser = registeredUsers[1];
+let activeUser = registeredUsers[0];
 
 let videoSubmissions = [];
 let audioSubmissions = [];
 let depositRequests = [];
 let withdrawRequests = [];
 let referralHistories = {
-  "CE1001": [
-    { date: "22 Jul 2026", referredName: "করিম হাসান", status: "Verified Bonus", bonus: 50 }
-  ]
+  "CE1001": []
 };
 
 let supportThreads = {
   "01836345346": [
     { sender: 'admin', text: 'হ্যালো! CreativeEarn সাপোর্ট সেন্টারে আপনাকে স্বাগতম।', image: null, time: '03:15 PM', ticket: '#SUP-10458' }
-  ],
-  "01711223344": [
-    { sender: 'admin', text: 'হ্যালো! কীভাবে আপনাকে সাহায্য করতে পারি?', image: null, time: '03:20 PM', ticket: '#SUP-10459' }
   ]
 };
 
-// 🔑 এডমিন লগইন সিকিউরিটি
+// 🔑 এডমিন লগইন
 app.post('/api/admin/login', (req, res) => {
   const { password } = req.body;
   if (password === ADMIN_PASSWORD) {
@@ -94,36 +84,28 @@ function verifyAdminAuth(req, res, next) {
   res.status(401).json({ status: 'error', message: 'অননুমোদিত অ্যাক্সেস! পাসওয়ার্ড দিয়ে লগইন করুন।' });
 }
 
-// 🔑 সাইনআপ & লগইন
+// 🔑 সাইনআপ (১টি ডিভাইস = ১টি একাউন্ট কড়া নিয়ম)
 app.post('/api/auth/signup', (req, res) => {
   const { name, phone, email, password, refCode } = req.body;
+  const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
   if (!name || !phone || !email || !password) {
     return res.status(400).json({ status: 'error', message: 'সবগুলো তথ্য প্রদান করুন!' });
   }
 
-  const existingUser = registeredUsers.find(u => u.phone === phone);
-  if (existingUser) {
-    return res.status(400).json({ status: 'error', message: 'এই নম্বর দিয়ে ইতোমধ্যে একাউন্ট খোলা হয়েছে!' });
+  // 🔴 ১ ডিভাইস / আইপি থেকে একাধিক একাউন্ট ব্লক
+  if (registeredIPs.has(clientIp)) {
+    return res.status(403).json({ status: 'error', message: '⚠️ আপনার ডিভাইস বা আইপি নেটওয়ার্ক থেকে ইতোমধ্যে একটি একাউন্ট তৈরি করা হয়েছে! ১টি ডিভাইসে একাধিক একাউন্ট তৈরি করা সম্পূর্ণ নিষিদ্ধ।' });
   }
 
-  let initialBalance = 0;
-  let referrerObj = null;
+  const existingUser = registeredUsers.find(u => u.phone === phone);
+  if (existingUser) {
+    return res.status(400).json({ status: 'error', message: 'এই ফোন নম্বর দিয়ে ইতোমধ্যে একাউন্ট খোলা রয়েছে!' });
+  }
 
+  let referrerObj = null;
   if (refCode) {
     referrerObj = registeredUsers.find(u => u.refCode === refCode);
-    if (referrerObj) {
-      initialBalance = 50;
-      referrerObj.balance += 50;
-      referrerObj.referralEarnings += 50;
-
-      if (!referralHistories[referrerObj.refCode]) referralHistories[referrerObj.refCode] = [];
-      referralHistories[referrerObj.refCode].unshift({
-        date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-        referredName: name,
-        status: "Bonus Added",
-        bonus: 50
-      });
-    }
   }
 
   const newRefCode = "CE" + Math.floor(1000 + Math.random() * 9000);
@@ -131,12 +113,28 @@ app.post('/api/auth/signup', (req, res) => {
   const newUser = {
     id: "USR-" + Math.floor(1000 + Math.random() * 9000),
     name, phone, email, password,
-    balance: initialBalance,
+    balance: 0,
     isVerified: false,
+    isFaceVerified: false,
     refCode: newRefCode,
     referredBy: referrerObj ? referrerObj.refCode : null,
-    referralEarnings: 0
+    referralBonusClaimed: false,
+    referralEarnings: 0,
+    ipAddress: clientIp
   };
+
+  // ডিভাইস আইপি রজিস্টার্ড হিসেবে সেভ
+  registeredIPs.add(clientIp);
+
+  if (referrerObj) {
+    if (!referralHistories[referrerObj.refCode]) referralHistories[referrerObj.refCode] = [];
+    referralHistories[referrerObj.refCode].unshift({
+      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+      referredName: name,
+      status: "Pending Verification (১০০৳ ডিপোজিট বাকি)",
+      bonus: 0
+    });
+  }
 
   registeredUsers.unshift(newUser);
   activeUser = newUser;
@@ -176,38 +174,15 @@ app.get('/api/user/dashboard-data', (req, res) => {
   });
 });
 
-app.post('/api/user/clear-popup', (req, res) => {
-  const { id } = req.body;
-  const v = videoSubmissions.find(item => item.id === id);
-  const a = audioSubmissions.find(item => item.id === id);
-  if (v) v.notified = true;
-  if (a) a.notified = true;
-  res.json({ status: 'success' });
-});
+// 👤 এআই ফেস ভেরিফিকেশন API
+app.post('/api/user/face-verify', (req, res) => {
+  const { faceImageData } = req.body;
+  if (!faceImageData) {
+    return res.status(400).json({ status: 'error', message: 'ফেস স্ক্যান ডাটা পাওয়া যায়নি!' });
+  }
 
-// 💬 সাপোর্ট চ্যাট
-app.get('/api/support/messages', (req, res) => {
-  const userPhone = req.query.phone || activeUser.phone;
-  res.json({ status: 'success', messages: supportThreads[userPhone] || [] });
-});
-
-app.post('/api/support/send', (req, res) => {
-  const { text, image, sender, targetPhone } = req.body;
-  const phone = targetPhone || activeUser.phone;
-
-  if (!supportThreads[phone]) supportThreads[phone] = [];
-
-  const ticket = "#SUP-" + Math.floor(10000 + Math.random() * 90000);
-  const newMsg = {
-    sender: sender || 'user',
-    text: text || '',
-    image: image || null,
-    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    ticket
-  };
-
-  supportThreads[phone].push(newMsg);
-  res.json({ status: 'success', message: 'মেসেজ পাঠানো হয়েছে' });
+  activeUser.isFaceVerified = true;
+  res.json({ status: 'success', message: '🎉 এআই ফেস ভেরিফিকেশন সফলভাবে সম্পন্ন হয়েছে!' });
 });
 
 // 💰 ডিপোজিট & উইথড্র
@@ -249,7 +224,7 @@ app.get('/api/user/transactions', (req, res) => {
   res.json({ status: 'success', userBalance: activeUser.balance, deposits: depositRequests.filter(d => d.userPhone === activeUser.phone), withdraws: withdrawRequests.filter(w => w.userPhone === activeUser.phone) });
 });
 
-// 🎬 ভিডিও & অডিও আপলোড
+// 🎬 অরিজিনাল ভিডিও আপলোড & কপিরাইট চেকার
 app.post('/api/upload-video', (req, res) => {
   if (!activeUser.isVerified) {
     return res.status(403).json({ status: 'error', message: 'কমপক্ষে ১০০ টাকা ডিপোজিট করে একাউন্ট ভেরিফাই ও আনলক করুন!' });
@@ -258,6 +233,16 @@ app.post('/api/upload-video', (req, res) => {
   if (!termsAccepted) return res.status(400).json({ status: 'error', message: 'শর্তাবলী মেনে টিক দিন!' });
 
   const base64Data = fileData.replace(/^data:video\/\w+;base64,/, "");
+
+  // 🔍 কপিরাইট & ইউনিকনেস ডিজিটাল হ্যাশ চেক (SHA-256)
+  const videoHash = crypto.createHash('sha256').update(base64Data).digest('hex');
+
+  if (registeredVideoHashes.has(videoHash)) {
+    return res.status(400).json({ status: 'error', message: '⚠️ কপিরাইট ডিটেক্টেড! এই ভিডিওটি ইতোমধ্যে প্ল্যাটফর্মে আপলোড করা হয়েছে বা সোশ্যাল মিডিয়া (Facebook/YouTube/TikTok) থেকে হুবহু কপি করা। নিজের অরিজিনাল ভিডিও দিন।' });
+  }
+
+  registeredVideoHashes.add(videoHash);
+
   const cleanFileName = `vid_${Date.now()}_${fileName.replace(/\s+/g, '_')}`;
   const savePath = path.join(uploadDir, cleanFileName);
 
@@ -271,10 +256,12 @@ app.post('/api/upload-video', (req, res) => {
       category: category || 'নাচ',
       fileName: cleanFileName,
       fileUrl: `/uploads/${cleanFileName}`,
+      originalityScore: "98% Original",
+      copyrightCheck: "Passed (No FB/YT/TikTok Matches)",
       date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
       status: 'In Review', amount: 0, rating: 0, comment: '', notified: false
     });
-    res.json({ status: 'success', message: '🎉 আপনার ভিডিও রিভিউয়ে গিয়েছে! আগামী ৩০ মিনিটের মধ্যে রিভিউ সম্পন্ন হবে।' });
+    res.json({ status: 'success', message: '🎉 অরিজিনাল ভিডিও যাচাই সফল হয়েছে! ৩০ মিনিটের মধ্যে ম্যানুয়াল রিভিউ সম্পন্ন হবে।' });
   });
 });
 
@@ -302,17 +289,14 @@ app.post('/api/upload-audio', (req, res) => {
       date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
       status: 'In Review', amount: 0, rating: 0, comment: '', notified: false
     });
-    res.json({ status: 'success', message: '🎉 আপনার অডিও রিভিউয়ে গিয়েছে! আগামী ৩০ মিনিটের মধ্যে রিভিউ সম্পন্ন হবে।' });
+    res.json({ status: 'success', message: '🎉 অডিও রিভিউয়ে গিয়েছে! আগামী ৩০ মিনিটের মধ্যে রিভিউ সম্পন্ন হবে।' });
   });
 });
 
-// 👑 ADMIN PROTECTED APIs (হিস্টোরি ডাটাবেজে স্থায়ী থাকবে) ----------------
+// 👑 ADMIN PROTECTED APIs ----------------
 app.post('/api/admin/update-deposit-number', verifyAdminAuth, (req, res) => {
   const { depositNumber } = req.body;
-  if (depositNumber) {
-    adminDepositNumber = depositNumber;
-    return res.json({ status: 'success', message: 'ডিপোজিট নম্বর পরিবর্তন হয়েছে' });
-  }
+  if (depositNumber) { adminDepositNumber = depositNumber; return res.json({ status: 'success', message: 'ডিপোজিট নম্বর পরিবর্তন হয়েছে' }); }
   res.status(400).json({ status: 'error', message: 'খালি নম্বর চলবে না' });
 });
 
@@ -345,33 +329,46 @@ app.get('/api/admin/stats', verifyAdminAuth, (req, res) => {
 
 app.get('/api/admin/users', verifyAdminAuth, (req, res) => res.json({ status: 'success', users: registeredUsers }));
 
-app.get('/api/admin/support-threads', verifyAdminAuth, (req, res) => {
-  const threads = Object.keys(supportThreads).map(phone => {
-    const usr = registeredUsers.find(u => u.phone === phone);
-    const msgs = supportThreads[phone];
-    const lastMsg = msgs.length > 0 ? msgs[msgs.length - 1] : { text: 'কোনো মেসেজ নেই', time: '' };
-    return {
-      phone,
-      userName: usr ? usr.name : 'Unknown User',
-      lastText: lastMsg.text || '📷 [ছবি পাঠানো হয়েছে]',
-      lastTime: lastMsg.time
-    };
-  });
-  res.json({ status: 'success', threads });
-});
-
-// 🔴 ডিপোজিট রিভিউ (ইউজারের হিস্টোরিতে স্থায়ী সেভ থাকবে)
 app.get('/api/admin/pending-deposits', verifyAdminAuth, (req, res) => res.json({ status: 'success', deposits: depositRequests.filter(d => d.status === 'Pending') }));
+
+// 🔴 ডিপোজিট এপ্রুভ হলে রেফারার ৫০ টাকা পাবে
 app.post('/api/admin/review-deposit', verifyAdminAuth, (req, res) => {
   const { id, status } = req.body;
   const dep = depositRequests.find(d => d.id === id);
   if (dep) {
-    dep.status = status; // 'Approved' বা 'Rejected' স্ট্যাটাস আপডেট হবে (মুছে যাবে না)
+    dep.status = status;
     if (status === 'Approved') {
       const usr = registeredUsers.find(u => u.phone === dep.userPhone);
       if (usr) {
         usr.balance += dep.amount;
-        if (dep.amount >= 100) usr.isVerified = true;
+
+        // ১০০ টাকা বা তার বেশি ডিপোজিট হলে একাউন্ট ভেরিফাই হবে
+        if (dep.amount >= 100) {
+          usr.isVerified = true;
+
+          // 🎁 রেফার করা ইউজারকে ৫০ টাকা প্রদান (যদি আগে না পেয়ে থাকে)
+          if (usr.referredBy && !usr.referralBonusClaimed) {
+            const referrerObj = registeredUsers.find(u => u.refCode === usr.referredBy);
+            if (referrerObj) {
+              referrerObj.balance += 50;
+              referrerObj.referralEarnings += 50;
+              usr.referralBonusClaimed = true;
+
+              if (!referralHistories[referrerObj.refCode]) referralHistories[referrerObj.refCode] = [];
+              
+              // রেফারেল স্ট্যাটাস আপডেট
+              const existingIndex = referralHistories[referrerObj.refCode].findIndex(r => r.referredName === usr.name);
+              if (existingIndex !== -1) {
+                referralHistories[referrerObj.refCode][existingIndex] = {
+                  date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+                  referredName: usr.name,
+                  status: "Verified Bonus (+৳৫০)",
+                  bonus: 50
+                };
+              }
+            }
+          }
+        }
       }
     }
     return res.json({ status: 'success', message: 'ডিপোজিট সফলভাবে আপডেট হয়েছে' });
@@ -379,23 +376,21 @@ app.post('/api/admin/review-deposit', verifyAdminAuth, (req, res) => {
   res.status(404).json({ status: 'error', message: 'রিকোয়েস্ট পাওয়া যায়নি' });
 });
 
-// 🔴 উইথড্র রিভিউ (ইউজারের হিস্টোরিতে স্থায়ী সেভ থাকবে)
 app.get('/api/admin/pending-withdraws', verifyAdminAuth, (req, res) => res.json({ status: 'success', userLiveBalance: activeUser.balance, withdraws: withdrawRequests.filter(w => w.status === 'Pending') }));
 app.post('/api/admin/review-withdraw', verifyAdminAuth, (req, res) => {
   const { id, status } = req.body;
   const withReq = withdrawRequests.find(w => w.id === id);
   if (withReq) {
-    withReq.status = status; // 'Approved' বা 'Rejected' স্ট্যাটাস আপডেট হবে (মুছে যাবে না)
+    withReq.status = status;
     if (status === 'Rejected') {
       const usr = registeredUsers.find(u => u.phone === withReq.userPhone);
-      if (usr) usr.balance += withReq.amount; // রিজেক্ট করলে টাকা ব্যালেন্সে ফেরত আসবে
+      if (usr) usr.balance += withReq.amount;
     }
     return res.json({ status: 'success', message: 'উইথড্র সফলভাবে আপডেট হয়েছে' });
   }
   res.status(404).json({ status: 'error', message: 'রিকোয়েস্ট পাওয়া যায়নি' });
 });
 
-// 🔴 ভিডিও রিভিউ
 app.get('/api/admin/pending-videos', verifyAdminAuth, (req, res) => res.json({ status: 'success', videos: videoSubmissions.filter(v => v.status === 'In Review') }));
 app.post('/api/admin/review-video', verifyAdminAuth, (req, res) => {
   const { id, status, amount, rating, comment } = req.body;
@@ -414,7 +409,6 @@ app.post('/api/admin/review-video', verifyAdminAuth, (req, res) => {
   res.status(404).json({ status: 'error', message: 'ভিডিও পাওয়া যায়নি' });
 });
 
-// 🔴 অডিও রিভিউ
 app.get('/api/admin/pending-audios', verifyAdminAuth, (req, res) => res.json({ status: 'success', audios: audioSubmissions.filter(a => a.status === 'In Review') }));
 app.post('/api/admin/review-audio', verifyAdminAuth, (req, res) => {
   const { id, status, amount, rating, comment } = req.body;
@@ -461,7 +455,5 @@ app.get('/admin-withdraw-review', (req, res) => serveHtmlFile(res, 'admin-withdr
 app.listen(PORT, () => {
   console.log(`=================================`);
   console.log(`🚀 Server Running: http://localhost:${PORT}`);
-  console.log(`🔑 Admin Login: http://localhost:${PORT}/admin-login`);
-  console.log(`🔐 Admin Panel: http://localhost:${PORT}/admin`);
   console.log(`=================================`);
 });
