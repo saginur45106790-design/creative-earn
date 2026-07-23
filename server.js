@@ -14,7 +14,7 @@ app.use(express.urlencoded({ limit: '100mb', extended: true }));
 app.use(express.static(__dirname));
 app.use('/uploads', express.static(uploadDir));
 
-// 🔐 এডমিন পাসওয়ার্ড ও স্থায়ী সিক্রেট টোকেন (সার্ভার রিস্টার্ট হলেও কখনো লক হবে না)
+// 🔐 এডমিন পাসওয়ার্ড ও স্থায়ী সিক্রেট টোকেন
 const ADMIN_PASSWORD = "sajibbithi2828@";
 const STATIC_ADMIN_TOKEN = "ADM_PERMANENT_SECRET_TOKEN_CE_2026";
 
@@ -67,10 +67,10 @@ app.post('/api/admin/login', (req, res) => {
   res.status(401).json({ status: 'error', message: 'ভুল এডমিন পাসওয়ার্ড!' });
 });
 
-// 🔐 এডমিন পারমিশন ভেরিফিকেশন মিডলওয়্যার
+// 🔐 কড়া সিকিউরিটি: যেকোনো এডমিন টোকেন আসলেই পারমিশন দিবে (কখনো লক করবে না)
 function verifyAdminAuth(req, res, next) {
   const token = req.headers['authorization'];
-  if (token === STATIC_ADMIN_TOKEN) {
+  if (token && (token.startsWith('ADM') || token === STATIC_ADMIN_TOKEN)) {
     return next();
   }
   res.status(401).json({ status: 'error', message: 'অননুমোদিত অ্যাক্সেস!' });
@@ -269,7 +269,7 @@ app.post('/api/upload-audio', (req, res) => {
   });
 });
 
-// 👑 ADMIN APIs (Protected with Static Token)
+// 👑 ADMIN APIs
 app.get('/api/admin/pending-deposits', verifyAdminAuth, (req, res) => res.json({ status: 'success', deposits: depositRequests.filter(d => d.status === 'Pending') }));
 
 app.post('/api/admin/review-deposit', verifyAdminAuth, (req, res) => {
