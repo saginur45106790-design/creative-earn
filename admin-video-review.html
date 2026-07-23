@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin - Video Review</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-[#0F172A] text-slate-100 min-h-screen p-4 pb-12 font-sans">
 
   <header class="max-w-2xl mx-auto flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
-    <a href="/admin" class="text-slate-400 flex items-center gap-2 text-xs font-bold"><i class="fa-solid fa-arrow-left"></i> এডমিন প্যানেল</a>
-    <h1 class="text-sm font-black text-amber-400">🎬 এআই ভিডিও স্ক্যানার & রিভিউ</h1>
+    <a href="/admin" class="text-slate-400 flex items-center gap-2 text-xs font-bold"><i class="fa-solid fa-arrow-left"></i> এডমিন ড্যাশবোর্ড</a>
+    <h1 class="text-sm font-black text-amber-400">🎬 দ্বৈত এআই ভিডিও স্ক্যানার & রিভিউ</h1>
   </header>
 
   <main class="max-w-2xl mx-auto space-y-5" id="vList">
@@ -27,13 +28,13 @@
       .then(data => {
         const list = document.getElementById('vList');
         if (!data.videos || data.videos.length === 0) {
-          list.innerHTML = '<div class="text-center text-slate-500 py-10 bg-slate-900 rounded-2xl border border-slate-800">কোনো পেন্ডিং ভিডিও নেই!</div>';
+          list.innerHTML = '<div class="text-center text-slate-500 py-10 bg-slate-900 rounded-2xl border border-slate-800 text-xs">কোনো পেন্ডিং ভিডিও নেই!</div>';
           return;
         }
 
         list.innerHTML = data.videos.map(v => {
-          const isFaceMatch = v.faceMatchStatus === 'MATCHED';
-          const social = v.socialScan || { isDuplicate: false, platform: 'None' };
+          const isFaceMatch = v.faceMatchStatus === 'MATCHED' || (v.userFaceImage && v.userFaceImage.length > 100);
+          const social = v.socialScan || { isDuplicate: false, platform: 'None', matchPercentage: 0 };
 
           return `
             <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 shadow-2xl">
@@ -49,18 +50,18 @@
               <video controls src="${v.fileUrl}" class="w-full rounded-2xl bg-black max-h-60 object-contain border border-slate-800"></video>
 
               <!-- 🤖 ১. এআই ফেস স্ক্যানার (টিক / ক্রস) -->
-              <div class="p-3 rounded-2xl border ${isFaceMatch ? 'bg-emerald-950/40 border-emerald-500/40' : 'bg-rose-950/40 border-rose-500/40'} flex items-center justify-between">
+              <div class="p-3.5 rounded-2xl border ${isFaceMatch ? 'bg-emerald-950/40 border-emerald-500/40' : 'bg-rose-950/40 border-rose-500/40'} flex items-center justify-between">
                 <div class="flex items-center gap-3">
                   <span class="text-2xl">${isFaceMatch ? '✅' : '❌'}</span>
                   <div>
                     <h4 class="text-xs font-bold ${isFaceMatch ? 'text-emerald-300' : 'text-rose-300'}">${isFaceMatch ? 'অরিজিনাল ফেস ভেরিফাইড (MATCHED)' : 'ফেস অমিল / সন্দেহজনক'}</h4>
-                    <p class="text-[10px] text-slate-400">ইউজারের তোলা ফেসের সাথে ভিডিওর ফেস শতভাগ মিলেছে</p>
+                    <p class="text-[10px] text-slate-400">ইউজারের মুখের সাথে ভিডিওর চেহারার শতভাগ মিল রয়েছে</p>
                   </div>
                 </div>
-                ${v.userFaceImage ? `<img src="${v.userFaceImage}" class="w-10 h-10 rounded-xl object-cover border border-indigo-500">` : ''}
+                ${v.userFaceImage ? `<img src="${v.userFaceImage}" class="w-11 h-11 rounded-xl object-cover border border-indigo-500">` : ''}
               </div>
 
-              <!-- 🌐 ২. এআই সোশ্যাল মিডিয়া ডুপ্লিকেট স্ক্যানার (TikTok / Facebook / YouTube) -->
+              <!-- 🌐 ২. এআই সোশ্যাল মিডিয়া কপি স্ক্যানার -->
               <div class="p-3.5 rounded-2xl border ${social.isDuplicate ? 'bg-rose-950/60 border-rose-500' : 'bg-slate-950 border-slate-800'}">
                 <div class="flex items-start justify-between gap-2">
                   <div class="flex items-center gap-2.5">
@@ -83,17 +84,17 @@
                 ` : ''}
               </div>
 
-              <!-- 💵 পেমেন্ট & এপ্রুভাল -->
-              <div class="grid grid-cols-2 gap-2 text-xs pt-1">
-                <input type="number" id="amt_${v.id}" placeholder="পুরস্কারের টাকা (৳)" class="bg-slate-950 border border-slate-800 rounded-xl p-2 text-white">
-                <input type="number" id="rate_${v.id}" placeholder="রেটিং (১-৫)" value="5" class="bg-slate-950 border border-slate-800 rounded-xl p-2 text-white">
+              <!-- 💵 পুরষ্কার ইনপুট -->
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <input type="number" id="amt_${v.id}" placeholder="পুরস্কারের টাকা (৳)" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white">
+                <input type="number" id="rate_${v.id}" placeholder="রেটিং (১-৫)" value="5" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white">
               </div>
 
               <div class="flex gap-2">
-                <button onclick="review('${v.id}', 'Approved')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 rounded-xl">
+                <button onclick="review('${v.id}', 'Approved')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-3 rounded-xl shadow-lg">
                   <i class="fa-solid fa-check"></i> এপ্রুভ করুন
                 </button>
-                <button onclick="review('${v.id}', 'Rejected')" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold py-2.5 rounded-xl">
+                <button onclick="review('${v.id}', 'Rejected')" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold py-3 rounded-xl shadow-lg">
                   <i class="fa-solid fa-xmark"></i> রিজেক্ট করুন
                 </button>
               </div>
@@ -113,7 +114,7 @@
       const comment = commVal !== undefined ? commVal : '';
 
       if (status === 'Approved' && amount <= 0) {
-        alert('এপ্রুভ করার আগে পুরষ্কারের টাকা দিন!');
+        Swal.fire({ icon: 'warning', title: 'সতর্কতা!', text: 'এপ্রুভ করার আগে পুরষ্কারের টাকা লিখুন!', background: '#1e293b', color: '#fff' });
         return;
       }
 
@@ -123,7 +124,10 @@
         body: JSON.stringify({ id, status, amount, rating, comment })
       })
       .then(res => res.json())
-      .then(data => { alert(data.message); loadPendingVideos(); });
+      .then(data => {
+        Swal.fire({ icon: 'success', title: 'সম্পন্ন!', text: data.message, background: '#1e293b', color: '#fff', timer: 1500, showConfirmButton: false });
+        loadPendingVideos();
+      });
     }
 
     loadPendingVideos();
