@@ -62,7 +62,7 @@ let depositRequests = [];
 let withdrawRequests = [];
 let referralHistories = {
   "CE1001": [
-    { date: "22 Jul 2026", referredName: "করিম হাসান", status: "Unverified", bonus: 0 }
+    { date: "22 Jul 2026", referredName: "করিম হাসান", status: "Verified Bonus", bonus: 50 }
   ]
 };
 
@@ -110,7 +110,7 @@ app.post('/api/auth/signup', (req, res) => {
   let referrerObj = null;
 
   if (refCode) {
-    referrerObj = registeredUsers.find(u => u.refCode === refCode && u.isVerified);
+    referrerObj = registeredUsers.find(u => u.refCode === refCode);
     if (referrerObj) {
       initialBalance = 50;
       referrerObj.balance += 50;
@@ -120,7 +120,7 @@ app.post('/api/auth/signup', (req, res) => {
       referralHistories[referrerObj.refCode].unshift({
         date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
         referredName: name,
-        status: "Verified Bonus",
+        status: "Bonus Added",
         bonus: 50
       });
     }
@@ -306,7 +306,7 @@ app.post('/api/upload-audio', (req, res) => {
   });
 });
 
-// 👑 ADMIN PROTECTED APIs (অটো রিমুভাল সিস্টেম সহ) ----------------
+// 👑 ADMIN PROTECTED APIs (হিস্টোরি ডাটাবেজে স্থায়ী থাকবে) ----------------
 app.post('/api/admin/update-deposit-number', verifyAdminAuth, (req, res) => {
   const { depositNumber } = req.body;
   if (depositNumber) {
@@ -360,14 +360,13 @@ app.get('/api/admin/support-threads', verifyAdminAuth, (req, res) => {
   res.json({ status: 'success', threads });
 });
 
-// 🔴 ডিপোজিট রিভিউ & অটো রিমুভ
+// 🔴 ডিপোজিট রিভিউ (ইউজারের হিস্টোরিতে স্থায়ী সেভ থাকবে)
 app.get('/api/admin/pending-deposits', verifyAdminAuth, (req, res) => res.json({ status: 'success', deposits: depositRequests.filter(d => d.status === 'Pending') }));
 app.post('/api/admin/review-deposit', verifyAdminAuth, (req, res) => {
   const { id, status } = req.body;
-  const depIndex = depositRequests.findIndex(d => d.id === id);
-  if (depIndex !== -1) {
-    const dep = depositRequests[depIndex];
-    dep.status = status;
+  const dep = depositRequests.find(d => d.id === id);
+  if (dep) {
+    dep.status = status; // 'Approved' বা 'Rejected' স্ট্যাটাস আপডেট হবে (মুছে যাবে না)
     if (status === 'Approved') {
       const usr = registeredUsers.find(u => u.phone === dep.userPhone);
       if (usr) {
@@ -375,38 +374,33 @@ app.post('/api/admin/review-deposit', verifyAdminAuth, (req, res) => {
         if (dep.amount >= 100) usr.isVerified = true;
       }
     }
-    // এপ্রুভ বা রিজেক্টের পর পেন্ডিং লিস্ট থেকে অটো মুছে যাবে
-    depositRequests.splice(depIndex, 1);
-    return res.json({ status: 'success', message: 'ডিপোজিট সফলভাবে আপডেট ও রিমুভ হয়েছে' });
+    return res.json({ status: 'success', message: 'ডিপোজিট সফলভাবে আপডেট হয়েছে' });
   }
   res.status(404).json({ status: 'error', message: 'রিকোয়েস্ট পাওয়া যায়নি' });
 });
 
-// 🔴 উইথড্র রিভিউ & অটো রিমুভ
+// 🔴 উইথড্র রিভিউ (ইউজারের হিস্টোরিতে স্থায়ী সেভ থাকবে)
 app.get('/api/admin/pending-withdraws', verifyAdminAuth, (req, res) => res.json({ status: 'success', userLiveBalance: activeUser.balance, withdraws: withdrawRequests.filter(w => w.status === 'Pending') }));
 app.post('/api/admin/review-withdraw', verifyAdminAuth, (req, res) => {
   const { id, status } = req.body;
-  const withIndex = withdrawRequests.findIndex(w => w.id === id);
-  if (withIndex !== -1) {
-    const withReq = withdrawRequests[withIndex];
-    withReq.status = status;
+  const withReq = withdrawRequests.find(w => w.id === id);
+  if (withReq) {
+    withReq.status = status; // 'Approved' বা 'Rejected' স্ট্যাটাস আপডেট হবে (মুছে যাবে না)
     if (status === 'Rejected') {
       const usr = registeredUsers.find(u => u.phone === withReq.userPhone);
-      if (usr) usr.balance += withReq.amount;
+      if (usr) usr.balance += withReq.amount; // রিজেক্ট করলে টাকা ব্যালেন্সে ফেরত আসবে
     }
-    withdrawRequests.splice(withIndex, 1);
-    return res.json({ status: 'success', message: 'উইথড্র সফলভাবে আপডেট ও রিমুভ হয়েছে' });
+    return res.json({ status: 'success', message: 'উইথড্র সফলভাবে আপডেট হয়েছে' });
   }
   res.status(404).json({ status: 'error', message: 'রিকোয়েস্ট পাওয়া যায়নি' });
 });
 
-// 🔴 ভিডিও রিভিউ & অটো রিমুভ
+// 🔴 ভিডিও রিভিউ
 app.get('/api/admin/pending-videos', verifyAdminAuth, (req, res) => res.json({ status: 'success', videos: videoSubmissions.filter(v => v.status === 'In Review') }));
 app.post('/api/admin/review-video', verifyAdminAuth, (req, res) => {
   const { id, status, amount, rating, comment } = req.body;
-  const vIndex = videoSubmissions.findIndex(v => v.id === id);
-  if (vIndex !== -1) {
-    const video = videoSubmissions[vIndex];
+  const video = videoSubmissions.find(v => v.id === id);
+  if (video) {
     video.status = status;
     video.amount = Number(amount) || 0;
     video.rating = Number(rating) || 0;
@@ -415,19 +409,17 @@ app.post('/api/admin/review-video', verifyAdminAuth, (req, res) => {
       const usr = registeredUsers.find(u => u.phone === video.userPhone);
       if (usr) usr.balance += video.amount;
     }
-    // রিমুভ করার পরিবর্তে স্ট্যাটাস আপডেট রাখা হলো ইউজারের চ্যাটে দেখানোর জন্য
     return res.json({ status: 'success', message: 'ভিডিও রিভিউ সম্পূর্ণ হয়েছে' });
   }
   res.status(404).json({ status: 'error', message: 'ভিডিও পাওয়া যায়নি' });
 });
 
-// 🔴 অডিও রিভিউ & অটো রিমুভ
+// 🔴 অডিও রিভিউ
 app.get('/api/admin/pending-audios', verifyAdminAuth, (req, res) => res.json({ status: 'success', audios: audioSubmissions.filter(a => a.status === 'In Review') }));
 app.post('/api/admin/review-audio', verifyAdminAuth, (req, res) => {
   const { id, status, amount, rating, comment } = req.body;
-  const aIndex = audioSubmissions.findIndex(a => a.id === id);
-  if (aIndex !== -1) {
-    const audio = audioSubmissions[aIndex];
+  const audio = audioSubmissions.find(a => a.id === id);
+  if (audio) {
     audio.status = status;
     audio.amount = Number(amount) || 0;
     audio.rating = Number(rating) || 0;
