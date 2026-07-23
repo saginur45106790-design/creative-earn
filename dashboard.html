@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard - CreativeEarn</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-[#0F172A] text-slate-100 min-h-screen font-sans pb-16">
@@ -22,22 +23,35 @@
     </div>
   </main>
 
-  <!-- 📸 ফেস ভেরিফিকেশন ক্যামেরা মোডাল -->
+  <!-- 📸 ফেস ক্যামেরা মোডাল -->
   <div id="faceModal" class="hidden fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-indigo-500/30 rounded-2xl p-5 max-w-sm w-full text-center space-y-4">
       <h3 class="text-base font-bold text-white"><i class="fa-solid fa-face-smile text-amber-400"></i> এআই ফেস ভেরিফিকেশন</h3>
-      <div id="stepDesc" class="bg-indigo-950 p-2 rounded-xl text-amber-300 text-xs font-bold">ক্যামেরার সামনে সঠিকভাবে বসুন</div>
+      <div id="stepDesc" class="bg-indigo-950 p-2.5 rounded-xl text-amber-300 text-xs font-bold animate-pulse">ক্যামেরার সামনে সোজা হয়ে বসুন</div>
       <div class="relative w-44 h-44 mx-auto rounded-full overflow-hidden border-4 border-indigo-500">
         <video id="webcam" autoplay playsinline class="w-full h-full object-cover transform -scale-x-100"></video>
         <canvas id="canvas" class="hidden"></canvas>
       </div>
-      <button onclick="startScanProcess()" class="w-full py-2.5 bg-emerald-600 font-bold rounded-xl text-xs text-white">স্ক্যান শুরু করুন</button>
+      <button onclick="startScanProcess()" class="w-full py-3 bg-emerald-600 font-bold rounded-xl text-xs text-white shadow-lg">স্ক্যান শুরু করুন</button>
       <button onclick="closeModal()" class="text-xs text-slate-400 underline block mx-auto">বাতিল</button>
     </div>
   </div>
 
   <script>
     let stream = null;
+
+    function showPopup(icon, title, text, callback) {
+      Swal.fire({
+        icon: icon,
+        title: title,
+        text: text,
+        background: '#1e293b',
+        color: '#fff',
+        confirmButtonColor: '#6366f1',
+        timer: 1800,
+        showConfirmButton: false
+      }).then(() => { if(callback) callback(); });
+    }
 
     function loadDashboard() {
       fetch('/api/user/dashboard-data')
@@ -52,15 +66,15 @@
             card.innerHTML = `
               <div class="w-16 h-16 bg-amber-500/10 border border-amber-500/30 rounded-full flex items-center justify-center mx-auto text-amber-400 text-2xl"><i class="fa-solid fa-lock"></i></div>
               <h2 class="text-base font-black text-white">🔒 আপলোড ফিচারটি লক করা আছে</h2>
-              <p class="text-xs text-slate-400">ভিডিও আপলোড করতে কমপক্ষে <b class="text-amber-400">১০০ টাকা ডিপোজিট</b> করুন।</p>
-              <a href="/deposit" class="block w-full py-3 bg-amber-500 text-slate-950 font-black rounded-xl text-xs">💳 এখনই ১০০ টাকা ডিপোজিট করুন</a>
+              <p class="text-xs text-slate-400">ভিডিও আপলোড করতে কমপক্ষে <b class="text-amber-400">১০০ টাকা ডিপোজিট</b> সম্পন্ন করুন!</p>
+              <a href="/deposit" class="block w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs shadow-lg transition">💳 এখনই ১০০ টাকা ডিপোজিট করুন</a>
             `;
           } else if (u.hasDeposited100 && !u.isFaceVerified) {
             card.innerHTML = `
               <div class="w-16 h-16 bg-indigo-500/10 border border-indigo-500/30 rounded-full flex items-center justify-center mx-auto text-indigo-400 text-2xl animate-bounce"><i class="fa-solid fa-camera"></i></div>
-              <h2 class="text-base font-black text-white">📸 ফেস ভেরিফাই আবশ্যক</h2>
-              <p class="text-xs text-slate-300">আপনার ডিপোজিট এপ্রুভ হয়েছে! এবার ফেস স্ক্যান করে একাউন্ট আনলক করুন।</p>
-              <button onclick="openCamera()" class="w-full py-3 bg-indigo-600 text-white font-black rounded-xl text-xs">📸 ফেস ভেরিফাই করুন</button>
+              <h2 class="text-base font-black text-white">📸 ফেস ভেরিফিকেশন করুন</h2>
+              <p class="text-xs text-slate-300">ডিপোজিট এপ্রুভ হয়েছে! এবার লাইভ ফেস স্ক্যান করে একাউন্ট আনলক করুন।</p>
+              <button onclick="openCamera()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl text-xs shadow-lg">📸 এখন ফেস ভেরিফাই করুন</button>
             `;
           } else {
             card.innerHTML = `
@@ -76,7 +90,7 @@
                 <input type="checkbox" id="terms" class="rounded">
                 <label for="terms">এটি আমার অরিজিনাল ভিডিও</label>
               </div>
-              <button onclick="uploadVideo()" class="w-full py-3 bg-emerald-600 text-white font-black rounded-xl text-xs mt-3">ভিডিও সাবমিট করুন</button>
+              <button onclick="uploadVideo()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-xs mt-3 shadow-lg">ভিডিও সাবমিট করুন</button>
             `;
           }
         }
@@ -88,7 +102,7 @@
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: true });
         document.getElementById('webcam').srcObject = stream;
-      } catch(e) { alert("ক্যামেরা অন করা যায়নি!"); }
+      } catch(e) { showPopup('error', 'ব্যর্থ!', 'ক্যামেরা পারমিশন অন করুন!'); }
     }
 
     function closeModal() {
@@ -97,7 +111,7 @@
     }
 
     function startScanProcess() {
-      const steps = ["স্থির থাকুন...", "মাথা একটু নাড়ান...", "চোখ পিটপিট করুন..."];
+      const steps = ["স্থির থাকুন...", "মাথা একটু ডানে-বামে নাড়ান...", "চোখ ২ বার পিটপিট করুন..."];
       let idx = 0;
       const interval = setInterval(() => {
         if(idx < steps.length) {
@@ -120,15 +134,16 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ faceImageData: canvas.toDataURL('image/jpeg') })
       }).then(res=>res.json()).then(d=>{
-        alert(d.message); closeModal(); loadDashboard();
+        closeModal();
+        showPopup('success', 'ভেরিফাইড!', d.message, () => loadDashboard());
       });
     }
 
     function uploadVideo() {
       const file = document.getElementById('vFile').files[0];
       const terms = document.getElementById('terms').checked;
-      if(!file) return alert('ভিডিও সিলেক্ট করুন!');
-      if(!terms) return alert('টিক দিন!');
+      if(!file) return showPopup('warning', 'সতর্কতা!', 'ভিডিও ফাইল সিলেক্ট করুন');
+      if(!terms) return showPopup('warning', 'সতর্কতা!', 'শর্তাবলীতে টিক দিন');
 
       const reader = new FileReader();
       reader.onload = function(e) {
@@ -136,7 +151,9 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ fileName: file.name, fileData: e.target.result, termsAccepted: true })
-        }).then(res=>res.json()).then(d=>{ alert(d.message); location.reload(); });
+        }).then(res=>res.json()).then(d=>{
+          showPopup('success', 'সাবমিট সফল!', d.message, () => location.reload());
+        });
       };
       reader.readAsDataURL(file);
     }
