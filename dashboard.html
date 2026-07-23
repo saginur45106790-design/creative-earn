@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - CreativeEarn</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+    .animate-marquee { display: inline-block; animation: marquee 16s linear infinite; }
+    @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    .animate-pop-in { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    .glass-drawer { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px); border-left: 1px solid rgba(124, 58, 237, 0.3); }
+    .drawer-btn { border-radius: 14px; background: rgba(30, 41, 59, 0.7); border: 1.5px solid transparent; background-image: linear-gradient(rgba(30, 41, 59, 0.7), rgba(30, 41, 59, 0.7)), linear-gradient(to right, #7c3aed, #06b6d4); background-origin: border-box; background-clip: padding-box, border-box; }
+  </style>
+</head>
+<body class="bg-[#0F172A] text-slate-100 min-h-screen flex flex-col font-sans pb-16">
+
+  <!-- নেভিগেশন বার -->
+  <nav class="bg-slate-900/90 border-b border-slate-800 p-4 sticky top-0 z-40 shadow-xl backdrop-blur-md">
+    <div class="max-w-5xl mx-auto flex justify-between items-center">
+      <a href="/dashboard" class="text-xl font-black text-white flex items-center gap-2">
+        <i class="fa-solid fa-play text-indigo-400"></i> Creative<span class="text-indigo-400">Earn</span>
+      </a>
+      <div class="flex items-center gap-2.5">
+        <div class="bg-slate-950 border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+          <i class="fa-solid fa-wallet text-amber-400"></i> ৳ <span id="userBalance">0</span>
+        </div>
+        
+        <!-- 🟢 ৩-লাইনের ড্রয়ার বাটন -->
+        <button id="drawerToggleBtn" onclick="toggleDrawer()" class="drawer-btn w-10 h-10 flex items-center justify-center text-lg text-slate-200 transition-all duration-300">
+          <i id="drawerIcon" class="fa-solid fa-bars transition-transform duration-300"></i>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 🟢 Slide-in ড্রয়ার -->
+  <div id="accountDrawer" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex justify-end transition-opacity duration-300">
+    <div class="glass-drawer w-72 h-full p-6 space-y-6 shadow-2xl relative flex flex-col justify-between">
+      <div class="space-y-5">
+        <button onclick="toggleDrawer()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+
+        <div class="space-y-2 border-b border-slate-800 pb-4 mt-4">
+          <div class="w-14 h-14 bg-gradient-to-tr from-purple-600 to-cyan-500 rounded-2xl flex items-center justify-center text-2xl font-black text-white mb-2 shadow-lg" id="userAvatar">U</div>
+          <h3 id="drawerUserName" class="text-base font-bold text-white">ইউজার</h3>
+          <p id="drawerUserPhone" class="text-xs text-slate-400">01800000000</p>
+          <p id="drawerUserEmail" class="text-[11px] text-slate-500">user@gmail.com</p>
+          <div class="pt-1">
+            <span id="userStatusBadge" class="px-3 py-1 rounded-full font-bold text-[11px]">Loading...</span>
+          </div>
+        </div>
+
+        <div class="space-y-2 text-xs">
+          <a href="/dashboard" class="flex items-center gap-3 p-3 rounded-xl bg-purple-600/20 text-purple-300 border border-purple-500/30 font-bold">
+            <i class="fa-solid fa-house"></i> ড্যাশবোর্ড
+          </a>
+          <a href="/deposit" class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800/60 text-slate-300 transition">
+            <i class="fa-solid fa-wallet text-emerald-400"></i> ডিপোজিট
+          </a>
+          <a href="/withdraw" class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800/60 text-slate-300 transition">
+            <i class="fa-solid fa-money-bill-transfer text-rose-400"></i> উইথড্র
+          </a>
+          <a href="/referral" class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800/60 text-slate-300 transition">
+            <i class="fa-solid fa-gift text-amber-400"></i> রেফারাল প্রোগ্রাম
+          </a>
+          <a href="/support" class="flex items-center justify-between p-3 rounded-xl hover:bg-slate-800/60 text-slate-300 transition">
+            <span class="flex items-center gap-3"><i class="fa-solid fa-headset text-cyan-400"></i> সাপোর্ট চ্যাট</span>
+            <span class="w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping"></span>
+          </a>
+        </div>
+      </div>
+
+      <a href="/login" class="flex items-center justify-center gap-2 w-full bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 font-bold p-3 rounded-xl border border-rose-500/30 text-xs transition">
+        <i class="fa-solid fa-right-from-bracket"></i> লগআউট করুন
+      </a>
+    </div>
+  </div>
+
+  <!-- 🎉 কাস্টম সাকসেস পপ-আপ -->
+  <div id="customSuccessModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border-2 border-emerald-500/50 p-6 rounded-3xl max-w-xs w-full text-center space-y-4 shadow-2xl animate-pop-in">
+      <div class="w-16 h-16 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full flex items-center justify-center text-3xl mx-auto">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+      <div class="space-y-1.5">
+        <h3 id="customModalTitle" class="text-base font-black text-white">🎉 রিভিউয়ে পাঠানো হয়েছে!</h3>
+        <p id="customModalMessage" class="text-xs text-slate-300">আপনার কনটেন্ট সফলভাবে রিভিউয়ে গিয়েছে। আগামী ৩০ মিনিটের মধ্যে রিভিউ সম্পন্ন হবে।</p>
+      </div>
+      <div class="text-[10px] text-emerald-400 font-semibold animate-pulse">
+        ⏳ পেজটি স্বয়ংক্রিয়ভাবে রিফ্রেশ হচ্ছে...
+      </div>
+    </div>
+  </div>
+
+  <main class="max-w-5xl mx-auto w-full p-4 space-y-6 flex-grow">
+
+    <!-- 📢 অ্যানিমেটেড নোটিস বোর্ড -->
+    <div class="bg-gradient-to-r from-slate-900 via-purple-950/40 to-slate-900 border border-amber-500/40 p-3.5 rounded-2xl flex items-center gap-3 overflow-hidden shadow-xl">
+      <div class="bg-amber-500/20 text-amber-400 p-2 rounded-xl text-sm shrink-0 border border-amber-500/30"><i class="fa-solid fa-bullhorn animate-bounce"></i></div>
+      <div class="overflow-hidden w-full">
+        <p id="noticeText" class="text-xs font-bold text-amber-300 whitespace-nowrap animate-marquee">লোড হচ্ছে...</p>
+      </div>
+    </div>
+
+    <!-- 🟢 ৩টি মেইন বাটন (আকর্ষণীয় বার) -->
+    <div class="grid grid-cols-3 gap-3">
+      <a href="/deposit" class="bg-gradient-to-b from-slate-900 to-slate-950 border border-emerald-500/30 p-4 rounded-2xl text-center shadow-lg hover:border-emerald-500 transition">
+        <i class="fa-solid fa-wallet text-emerald-400 text-xl mb-1 block"></i>
+        <h3 class="text-xs font-extrabold text-emerald-300">ডিপোজিট</h3>
+      </a>
+      <a href="/withdraw" class="bg-gradient-to-b from-slate-900 to-slate-950 border border-rose-500/30 p-4 rounded-2xl text-center shadow-lg hover:border-rose-500 transition">
+        <i class="fa-solid fa-money-bill-transfer text-rose-400 text-xl mb-1 block"></i>
+        <h3 class="text-xs font-extrabold text-rose-300">উইথড্র</h3>
+      </a>
+      <a href="/referral" class="bg-gradient-to-b from-slate-900 to-slate-950 border border-amber-500/30 p-4 rounded-2xl text-center shadow-lg hover:border-amber-500 transition">
+        <i class="fa-solid fa-gift text-amber-400 text-xl mb-1 block"></i>
+        <h3 class="text-xs font-extrabold text-amber-300">রেফার</h3>
+      </a>
+    </div>
+
+    <!-- আপলোড ট্যাব সুইচ -->
+    <div class="grid grid-cols-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800 text-xs font-bold">
+      <button onclick="switchUploadTab('video')" id="vidTabBtn" class="py-2.5 rounded-xl text-white bg-indigo-600 transition">🎥 ভিডিও আপলোড</button>
+      <button onclick="switchUploadTab('audio')" id="audTabBtn" class="py-2.5 rounded-xl text-slate-400 hover:text-white transition">🎙️ অডিও আপলোড</button>
+    </div>
+
+    <!-- 🔒 ১০০৳ ডিপোজিট লকিং সিস্টেম -->
+    <div class="relative">
+      
+      <div id="uploadLockOverlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md z-30 flex flex-col items-center justify-center p-6 text-center space-y-4 rounded-3xl border border-amber-500/50 hidden">
+        <div class="w-16 h-16 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center text-3xl border border-amber-500/40 animate-pulse">
+          <i class="fa-solid fa-lock"></i>
+        </div>
+        <h3 class="text-base font-black text-white">🔒 আপলোড ফিচারটি লক অবস্থায় আছে!</h3>
+        <p class="text-xs text-slate-300 max-w-sm">
+          ভিডিও বা অডিও আপলোড করে প্রতিদিন আয় করতে কমপক্ষে <b class="text-amber-400">১০০ টাকা ডিপোজিট</b> করে আপনার একাউন্ট ভেরিফাই ও আনলক করুন!
+        </p>
+        <a href="/deposit" class="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black px-6 py-3 rounded-xl text-xs shadow-lg shadow-amber-400/20 hover:scale-105 transition">
+          <i class="fa-solid fa-wallet"></i> এখন ১০০ টাকা ডিপোজিট করুন
+        </a>
+      </div>
+
+      <!-- 🎥 ভিডিও আপলোড সেকশন (১৩টি ক্যাটাগরি) -->
+      <section id="videoSection" class="bg-slate-900/90 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-2xl">
+        
+        <div class="bg-gradient-to-r from-rose-600/20 via-amber-500/20 to-rose-600/20 border-2 border-amber-400/60 p-4 rounded-2xl text-center space-y-1 shadow-xl">
+          <h3 class="text-xs font-black text-amber-300 uppercase tracking-wider flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-triangle-exclamation text-amber-400 text-sm"></i> জরুরি সতর্কবার্তা
+          </h3>
+          <p class="text-xs font-bold text-white">⚠️ শুধুমাত্র অরিজিনাল ভিডিও ছাড়া এপ্রুভ করা হবে না!</p>
+        </div>
+
+        <div class="flex justify-between items-center">
+          <h2 class="text-sm font-bold text-white"><i class="fa-solid fa-cloud-arrow-up text-amber-400 mr-1"></i> অরিজিনাল ভিডিও সাবমিট করুন</h2>
+          <span class="text-xs text-amber-400 font-bold">৳১০ - ৳৫০০/ভিডিও</span>
+        </div>
+
+        <form onsubmit="uploadMedia(event, 'video')" class="space-y-4">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">ভিডিও ক্যাটাগরি</label>
+            <select id="videoCategory" class="w-full p-3 bg-slate-950 rounded-xl text-xs border border-slate-800 text-slate-200 focus:outline-none">
+              <option value="নাচ">💃 নাচ (Dance)</option>
+              <option value="গান">🎤 গান (Singing)</option>
+              <option value="ফানি">😂 ফানি (Funny)</option>
+              <option value="রান্না">🍳 রান্না (Cooking)</option>
+              <option value="গল্প">📖 গল্প (Storytelling)</option>
+              <option value="পারসোনাল ব্লগ ভিডিও">📹 পারসোনাল ব্লগ ভিডিও</option>
+              <option value="ফুড রিভিউ">🍔 ফুড রিভিউ</option>
+              <option value="হ্যান্ড ক্রাফট">🎨 হ্যান্ড ক্রাফট</option>
+              <option value="ভুতের গল্প">👻 ভুতের গল্প</option>
+              <option value="মডেলিং">💃 মডেলিং</option>
+              <option value="ক্রিয়েটিং">✨ ক্রিয়েটিং</option>
+              <option value="টিকটক লিপসিং বা ডান্স">🎵 টিকটক লিপসিং / ডান্স</option>
+              <option value="হোমেড">🏠 হোমেড (Homemade)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">ভিডিও ফাইল সিলেক্ট করুন</label>
+            <input type="file" id="videoFileInput" accept="video/*" class="w-full p-2.5 bg-slate-950 rounded-xl text-xs border border-slate-800 text-slate-300" required>
+          </div>
+
+          <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
+            <p class="text-xs font-bold text-amber-400">আপলোড করার নিয়ম ও শর্তাবলী:</p>
+            <ul class="text-[11px] text-slate-300 space-y-1.5 list-disc list-inside">
+              <li>ভিডিওটি এপ্রুভ হলে এর স্বত্ব বা মালিকানা <b>Creative Earn</b>-এর হবে।</li>
+              <li>এই ভিডিও ইউজার অন্য কোনো সোশ্যাল মিডিয়ায় আপলোড করতে পারবে না।</li>
+              <li><b>এই ভিডিও টি সম্পূর্ণ আমার নিজের ও অরিজিনাল ভিডিও।</b></li>
+              <li>ভিডিওতে অবশ্যই আপনার মুখ (Face) পরিষ্কারভাবে দেখাতে হবে।</li>
+            </ul>
+            <label class="flex items-center gap-2 pt-2 border-t border-slate-800 cursor-pointer">
+              <input type="checkbox" id="vidTerms" class="accent-amber-400 w-4 h-4" required>
+              <span class="text-xs text-slate-200 font-semibold">আমি উপরে উল্লেখিত শর্তাবলীতে রাজি আছি।</span>
+            </label>
+          </div>
+
+          <button type="submit" class="w-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-3.5 rounded-xl text-xs transition">
+            ভিডিও সাবমিট করুন
+          </button>
+        </form>
+      </section>
+
+      <!-- 🎙️ অডিও আপলোড সেকশন -->
+      <section id="audioSection" class="bg-slate-900/90 border border-slate-800 p-6 rounded-3xl space-y-4 hidden shadow-2xl">
+        
+        <div class="bg-gradient-to-r from-indigo-600/20 via-purple-500/20 to-indigo-600/20 border-2 border-indigo-400/60 p-4 rounded-2xl text-center space-y-1 shadow-xl">
+          <h3 class="text-xs font-black text-indigo-300 uppercase tracking-wider flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-triangle-exclamation text-indigo-400 text-sm"></i> জরুরি সতর্কবার্তা
+          </h3>
+          <p class="text-xs font-bold text-white">⚠️ শুধুমাত্র অরিজিনাল অডিও/ভয়েস ছাড়া এপ্রুভ করা হবে না!</p>
+        </div>
+
+        <div class="flex justify-between items-center">
+          <h2 class="text-sm font-bold text-white"><i class="fa-solid fa-microphone text-indigo-400 mr-1"></i> অরিজিনাল অডিও/ভয়েস সাবমিট করুন</h2>
+          <span class="text-xs text-indigo-400 font-bold">৳৫ - ৳১০০/অডিও</span>
+        </div>
+
+        <form onsubmit="uploadMedia(event, 'audio')" class="space-y-4">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">অডিও ক্যাটাগরি</label>
+            <select id="audioCategory" class="w-full p-3 bg-slate-950 rounded-xl text-xs border border-slate-800 text-slate-200 focus:outline-none">
+              <option value="রেকর্ড গান">🎤 রেকর্ড গান</option>
+              <option value="গল্প">📖 গল্প</option>
+              <option value="ফানি ভয়েস">😂 ফানি ভয়েস</option>
+              <option value="মজার জোক্স">🎭 মজার জোক্স</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">অডিও ফাইল সিলেক্ট করুন</label>
+            <input type="file" id="audioFileInput" accept="audio/*" class="w-full p-2.5 bg-slate-950 rounded-xl text-xs border border-slate-800 text-slate-300" required>
+          </div>
+
+          <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
+            <p class="text-xs font-bold text-indigo-300">আপলোড করার নিয়ম ও শর্তাবলী:</p>
+            <ul class="text-[11px] text-slate-300 space-y-1.5 list-disc list-inside">
+              <li><b>এই অডিও টি এপ্রুভ হলে এর মালিকানা এই Creative Earn হবে।</b></li>
+              <li><b>এই ভয়েস টি অন্য কোথাও আপলোড হবে না।</b></li>
+              <li><b>এটি আমার নিজস্ব রেকর্ডকৃত অরিজিনাল ভয়েস।</b></li>
+            </ul>
+            <label class="flex items-center gap-2 pt-2 border-t border-slate-800 cursor-pointer">
+              <input type="checkbox" id="audTerms" class="accent-indigo-400 w-4 h-4" required>
+              <span class="text-xs text-slate-200 font-semibold">আমি উপরে উল্লেখিত শর্তাবলীতে রাজি আছি।</span>
+            </label>
+          </div>
+
+          <button type="submit" class="w-full bg-indigo-500 hover:bg-indigo-400 text-white font-black py-3.5 rounded-xl text-xs transition">
+            অডিও সাবমিট করুন
+          </button>
+        </form>
+      </section>
+    </div>
+
+    <!-- 📊 মিডিয়া রিভিউ আউটপুট চার্ট -->
+    <section class="bg-slate-900/90 border border-slate-800 p-6 rounded-3xl space-y-5 shadow-2xl">
+      <h3 class="text-sm font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-chart-pie text-indigo-400"></i> মিডিয়া রিভিউ আউটপুট চার্ট
+      </h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs min-w-[500px]">
+          <thead class="bg-slate-950 text-slate-400 uppercase text-[10px]">
+            <tr>
+              <th class="p-3">তারিখ</th>
+              <th class="p-3">টাইপ & ক্যাটাগরি</th>
+              <th class="p-3">রেটিং (%)</th>
+              <th class="p-3">পেমেন্ট</th>
+              <th class="p-3">অবস্থা</th>
+            </tr>
+          </thead>
+          <tbody id="mediaTableBody" class="divide-y divide-slate-800 text-slate-300">
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <a href="/support" class="fixed bottom-5 right-5 bg-gradient-to-tr from-indigo-600 to-purple-600 text-white w-13 h-13 p-3.5 rounded-full flex items-center justify-center shadow-2xl text-xl z-30 border-2 border-indigo-400 hover:scale-110 transition">
+    <i class="fa-solid fa-headset"></i>
+  </a>
+
+  <script>
+    function toggleDrawer() {
+      const drawer = document.getElementById('accountDrawer');
+      const icon = document.getElementById('drawerIcon');
+      drawer.classList.toggle('hidden');
+      if (drawer.classList.contains('hidden')) {
+        icon.className = "fa-solid fa-bars";
+      } else {
+        icon.className = "fa-solid fa-xmark";
+      }
+    }
+
+    function triggerSuccessModalAndAutoReload(msg) {
+      if (msg) document.getElementById('customModalMessage').innerText = msg;
+      document.getElementById('customSuccessModal').classList.remove('hidden');
+      setTimeout(() => { window.location.reload(); }, 2500);
+    }
+
+    function switchUploadTab(type) {
+      const vidBtn = document.getElementById('vidTabBtn');
+      const audBtn = document.getElementById('audTabBtn');
+      const vidSec = document.getElementById('videoSection');
+      const audSec = document.getElementById('audioSection');
+
+      if (type === 'video') {
+        vidBtn.className = "py-2.5 rounded-xl text-white bg-indigo-600 transition";
+        audBtn.className = "py-2.5 rounded-xl text-slate-400 transition";
+        vidSec.classList.remove('hidden');
+        audSec.classList.add('hidden');
+      } else {
+        audBtn.className = "py-2.5 rounded-xl text-white bg-indigo-600 transition";
+        vidBtn.className = "py-2.5 rounded-xl text-slate-400 transition";
+        audSec.classList.remove('hidden');
+        vidSec.classList.add('hidden');
+      }
+    }
+
+    async function loadDashboardData() {
+      const res = await fetch('/api/user/dashboard-data');
+      const data = await res.json();
+
+      if (data.status === 'success') {
+        document.getElementById('userBalance').innerText = data.user.balance;
+        document.getElementById('drawerUserName').innerText = data.user.name;
+        document.getElementById('drawerUserPhone').innerText = data.user.phone;
+        document.getElementById('drawerUserEmail').innerText = data.user.email;
+        document.getElementById('userAvatar').innerText = data.user.name.charAt(0).toUpperCase();
+        document.getElementById('noticeText').innerText = data.notice;
+
+        const badge = document.getElementById('userStatusBadge');
+        const lockOverlay = document.getElementById('uploadLockOverlay');
+
+        if (data.user.isVerified) {
+          badge.className = "bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full font-bold text-[11px] border border-emerald-500/30";
+          badge.innerText = "✓ Verified";
+          lockOverlay.classList.add('hidden');
+        } else {
+          badge.className = "bg-rose-500/20 text-rose-400 px-3 py-1 rounded-full font-bold text-[11px] border border-rose-500/30";
+          badge.innerText = "✕ Unverified";
+          lockOverlay.classList.remove('hidden');
+        }
+
+        const tableBody = document.getElementById('mediaTableBody');
+        let allItems = [
+          ...data.videos.map(v => ({ ...v, type: 'ভিডিও' })),
+          ...data.audios.map(a => ({ ...a, type: 'অডিও' }))
+        ];
+
+        if (allItems.length > 0) {
+          tableBody.innerHTML = allItems.map(item => {
+            let statusBadge = item.status === 'Approved'
+              ? '<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold">Approved</span>'
+              : item.status === 'Rejected'
+              ? '<span class="bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">Rejected</span>'
+              : '<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">In Review</span>';
+
+            return `
+              <tr class="hover:bg-slate-950/40 transition">
+                <td class="p-3">${item.date}</td>
+                <td class="p-3"><b class="text-indigo-300">[${item.type}]</b> ${item.category}</td>
+                <td class="p-3 text-amber-400 font-bold">${item.rating ? item.rating + '%' : 'পেন্ডিং'}</td>
+                <td class="p-3 text-emerald-400 font-bold">৳${item.amount || 0}</td>
+                <td class="p-3">${statusBadge}</td>
+              </tr>
+            `;
+          }).join('');
+        } else {
+          tableBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500">কোনো ডাটা নেই</td></tr>';
+        }
+      }
+    }
+
+    async function uploadMedia(e, type) {
+      e.preventDefault();
+      const fileInput = document.getElementById(type === 'video' ? 'videoFileInput' : 'audioFileInput');
+      const catSelect = document.getElementById(type === 'video' ? 'videoCategory' : 'audioCategory');
+      const file = fileInput.files[0];
+
+      const reader = new FileReader();
+      reader.onload = async function() {
+        const res = await fetch(type === 'video' ? '/api/upload-video' : '/api/upload-audio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileData: reader.result,
+            category: catSelect.value,
+            termsAccepted: true
+          })
+        });
+        const result = await res.json();
+        if (result.status === 'success') {
+          triggerSuccessModalAndAutoReload(result.message);
+        } else {
+          alert(result.message);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    loadDashboardData();
+  </script>
+</body>
+</html>

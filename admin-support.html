@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Support Panel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen flex flex-col font-sans overflow-hidden">
+
+  <nav class="bg-slate-900 border-b border-slate-800 p-3 flex justify-between items-center shrink-0">
+    <a href="/admin" class="text-xs text-amber-400 font-bold flex items-center gap-1.5"><i class="fa-solid fa-arrow-left"></i> এডমিন</a>
+    <h1 class="text-xs font-black text-white">💬 ইউজার সাপোর্ট চ্যাট সেন্টার</h1>
+  </nav>
+
+  <div class="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
+    <!-- ইনবক্স -->
+    <div class="w-full md:w-72 bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 p-3 overflow-y-auto shrink-0 space-y-2 max-h-44 md:max-h-full">
+      <h2 class="text-xs font-bold text-slate-400 mb-2">ইউজার ইনবক্স:</h2>
+      <div id="threadList" class="space-y-1.5">
+        <p class="text-xs text-slate-500 text-center py-4">লোডিং হচ্ছে...</p>
+      </div>
+    </div>
+
+    <!-- চ্যাট উইন্ডো -->
+    <div class="flex-1 flex flex-col bg-slate-950 min-h-0 h-full">
+      <div id="activeChatHeader" class="bg-slate-900/80 p-3 border-b border-slate-800 text-xs font-bold text-indigo-300 shrink-0">
+        কোনো ইউজার সিলেক্ট করুন
+      </div>
+
+      <div id="adminChatBody" class="flex-1 min-h-0 p-4 overflow-y-auto space-y-3">
+        <div class="text-center text-slate-500 text-xs py-10">বামপাশের ইউজার ইনবক্স থেকে যেকোনো একটিতে ক্লিক করুন।</div>
+      </div>
+
+      <!-- 🟢 ফিক্সড ইনপুট বার -->
+      <footer class="bg-slate-900 border-t border-slate-800 p-3 shrink-0 relative z-20">
+        <form onsubmit="sendAdminReply(event)" class="flex gap-2">
+          <input type="text" id="adminReplyInput" placeholder="ইউজারকে মেসেজ লিখুন..." class="flex-grow bg-slate-950 border border-slate-800 p-3 rounded-full text-xs text-slate-200 focus:outline-none focus:border-indigo-500" required>
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-2.5 rounded-full text-xs transition">
+            <i class="fa-solid fa-paper-plane mr-1"></i> Send
+          </button>
+        </form>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    let activePhone = null;
+
+    function getAdminHeader() {
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': localStorage.getItem('adminToken') || ''
+      };
+    }
+
+    async function loadThreads() {
+      const res = await fetch('/api/admin/support-threads', { headers: getAdminHeader() });
+      const data = await res.json();
+      if (data.status === 'success') {
+        const list = document.getElementById('threadList');
+        list.innerHTML = data.threads.map(t => `
+          <div onclick="selectThread('${t.phone}', '${t.userName}')" class="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 cursor-pointer text-xs space-y-0.5">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-white">${t.userName}</span>
+              <span class="text-[9px] text-slate-500">${t.lastTime}</span>
+            </div>
+            <p class="text-[11px] text-slate-400 truncate">${t.phone}</p>
+          </div>
+        `).join('');
+      }
+    }
+
+    async function selectThread(phone, userName) {
+      activePhone = phone;
+      document.getElementById('activeChatHeader').innerText = `💬 চ্যাট করছেন: ${userName} (${phone})`;
+      loadAdminMessages();
+    }
+
+    async function loadAdminMessages() {
+      if (!activePhone) return;
+      const res = await fetch(`/api/support/messages?phone=${activePhone}`);
+      const data = await res.json();
+      if (data.status === 'success') {
+        const body = document.getElementById('adminChatBody');
+        body.innerHTML = data.messages.map(m => {
+          const isAdmin = m.sender === 'admin';
+          return `
+            <div class="flex ${isAdmin ? 'justify-end' : 'justify-start'}">
+              <div class="${isAdmin ? 'bg-indigo-600 text-white' : 'bg-slate-900 border border-slate-800 text-slate-200'} p-3 rounded-2xl max-w-[80%] text-xs space-y-1">
+                ${m.image ? `<img src="${m.image}" class="rounded-xl max-h-48 w-full object-cover border border-slate-700 cursor-pointer" onclick="window.open('${m.image}')">` : ''}
+                ${m.text ? `<p>${m.text}</p>` : ''}
+                <span class="text-[9px] text-slate-400 block text-right">${m.time}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+        body.scrollTop = body.scrollHeight;
+      }
+    }
+
+    async function sendAdminReply(e) {
+      e.preventDefault();
+      if (!activePhone) return alert('আগে ইউজার সিলেক্ট করুন!');
+      const input = document.getElementById('adminReplyInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      await fetch('/api/support/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, sender: 'admin', targetPhone: activePhone })
+      });
+      loadAdminMessages();
+    }
+
+    setInterval(loadThreads, 4000);
+    setInterval(loadAdminMessages, 3000);
+    loadThreads();
+  </script>
+</body>
+</html>

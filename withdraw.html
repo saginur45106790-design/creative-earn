@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Withdraw - CreativeEarn</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    .animate-pop-in { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+  </style>
+</head>
+<body class="bg-[#0F172A] text-slate-100 min-h-screen font-sans pb-12">
+
+  <nav class="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-40">
+    <div class="max-w-md mx-auto flex justify-between items-center">
+      <a href="/dashboard" class="text-xs text-amber-400 font-bold flex items-center gap-1.5">
+        <i class="fa-solid fa-arrow-left"></i> ড্যাশবোর্ড
+      </a>
+      <h1 class="text-sm font-black text-white">💸 টাকা উইথড্র করুন</h1>
+    </div>
+  </nav>
+
+  <!-- 🎉 কাস্টম পপ-আপ -->
+  <div id="customSuccessModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border-2 border-emerald-500/50 p-6 rounded-3xl max-w-xs w-full text-center space-y-4 shadow-2xl animate-pop-in">
+      <div class="w-16 h-16 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full flex items-center justify-center text-3xl mx-auto">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+      <div class="space-y-1">
+        <h3 id="customModalTitle" class="text-base font-black text-white">উইথড্র রিকোয়েস্ট জমা হয়েছে!</h3>
+        <p id="customModalMessage" class="text-xs text-slate-300">আপনার ব্যালেন্স থেকে টাকা কেটে নেওয়া হয়েছে। এডমিন রিভিউ করে পেমেন্ট সম্পন্ন করবে।</p>
+      </div>
+      <div class="text-[10px] text-emerald-400 font-semibold animate-pulse">
+        ⏳ পেজটি স্বয়ংক্রিয়ভাবে রিফ্রেশ হচ্ছে...
+      </div>
+    </div>
+  </div>
+
+  <main class="max-w-md mx-auto p-4 space-y-6">
+
+    <!-- 🟢 বর্তমান ব্যালেন্স প্রদর্শন -->
+    <div class="bg-gradient-to-r from-purple-950/50 via-slate-900 to-slate-900 border border-purple-500/30 p-5 rounded-3xl text-center space-y-1 shadow-xl">
+      <span class="text-xs text-slate-400 font-medium">আপনার বর্তমান মেইন ব্যালেন্স</span>
+      <h2 class="text-3xl font-black text-emerald-400">৳ <span id="currentBalance">0</span></h2>
+    </div>
+
+    <form onsubmit="handleWithdrawSubmit(event)" class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-xl">
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">উইথড্র মেথড</label>
+        <select id="withMethod" class="w-full p-3 bg-slate-950 rounded-xl text-xs border border-slate-800 text-slate-200 focus:outline-none">
+          <option value="bKash">bKash</option>
+          <option value="Nagad">Nagad</option>
+          <option value="Rocket">Rocket</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">আপনার পেমেন্ট নম্বর</label>
+        <input type="tel" id="withNumber" placeholder="018XXXXXXXX" class="w-full p-3 bg-slate-950 rounded-xl text-xs border border-slate-800 text-slate-200 focus:outline-none" required>
+      </div>
+
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">উইথড্র করার পরিমাণ (৳)</label>
+        <input type="number" id="withAmount" placeholder="50" class="w-full p-3 bg-slate-950 rounded-xl text-xs border border-slate-800 text-slate-200 focus:outline-none" required>
+      </div>
+
+      <button type="submit" class="w-full bg-rose-500 hover:bg-rose-400 text-white font-black py-3 rounded-xl text-xs transition shadow-lg shadow-rose-500/20">
+        উইথড্র রিকোয়েস্ট পাঠান
+      </button>
+    </form>
+
+    <section class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-3 shadow-xl">
+      <h3 class="text-xs font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-clock-rotate-left text-rose-400"></i> আপনার উইথড্র লাইভ স্ট্যাটাস
+      </h3>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs min-w-[280px]">
+          <thead class="bg-slate-950 text-slate-400 uppercase text-[10px]">
+            <tr>
+              <th class="p-2.5">তারিখ</th>
+              <th class="p-2.5">অ্যামাউন্ট</th>
+              <th class="p-2.5">নম্বর</th>
+              <th class="p-2.5">অবস্থা</th>
+            </tr>
+          </thead>
+          <tbody id="withHistoryTable" class="divide-y divide-slate-800 text-slate-300">
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    async function loadTransactions() {
+      try {
+        const res = await fetch('/api/user/transactions');
+        const data = await res.json();
+        if (data.status === 'success') {
+          document.getElementById('currentBalance').innerText = data.userBalance;
+
+          const tbody = document.getElementById('withHistoryTable');
+          if (data.withdraws.length > 0) {
+            tbody.innerHTML = data.withdraws.map(w => {
+              let badge = w.status === 'Approved'
+                ? '<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">Approved</span>'
+                : w.status === 'Rejected'
+                ? '<span class="bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full font-bold">Rejected (Refunded)</span>'
+                : '<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pending</span>';
+
+              return `
+                <tr>
+                  <td class="p-2.5">${w.date}</td>
+                  <td class="p-2.5 font-bold text-rose-400">৳${w.amount}</td>
+                  <td class="p-2.5 font-mono text-[11px]">${w.targetNumber}</td>
+                  <td class="p-2.5">${badge}</td>
+                </tr>
+              `;
+            }).join('');
+          } else {
+            tbody.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-slate-500">কোনো ইতিহাস নেই</td></tr>';
+          }
+        }
+      } catch (err) { console.error(err); }
+    }
+
+    async function handleWithdrawSubmit(e) {
+      e.preventDefault();
+      const payload = {
+        method: document.getElementById('withMethod').value,
+        targetNumber: document.getElementById('withNumber').value,
+        amount: document.getElementById('withAmount').value
+      };
+
+      try {
+        const res = await fetch('/api/user/withdraw', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.status === 'success') {
+          document.getElementById('customSuccessModal').classList.remove('hidden');
+          setTimeout(() => { window.location.reload(); }, 2500);
+        } else {
+          alert(data.message);
+        }
+      } catch (err) { alert('সমস্যা হয়েছে!'); }
+    }
+
+    loadTransactions();
+  </script>
+</body>
+</html>

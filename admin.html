@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - CreativeEarn</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans pb-12">
+
+  <nav class="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-40">
+    <div class="max-w-5xl mx-auto flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <span class="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded">ADMIN</span>
+        <h1 class="text-lg font-black text-white">Creative<span class="text-indigo-400">Earn</span> ড্যাশবোর্ড</h1>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="/dashboard" class="text-xs text-slate-400 hover:text-white"><i class="fa-solid fa-globe"></i> মেইন সাইট</a>
+        <button onclick="adminLogout()" class="text-xs text-rose-400 hover:text-rose-300 font-bold"><i class="fa-solid fa-lock"></i> লক</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-5xl mx-auto p-4 space-y-6">
+
+    <!-- ৬টি সার্ভিস বাটন -->
+    <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl grid grid-cols-2 md:grid-cols-3 gap-3">
+      <a href="/admin-deposit-review" class="bg-emerald-500/20 border border-emerald-500/40 p-4 rounded-2xl text-center space-y-1">
+        <p class="text-xs font-bold text-emerald-300">💰 ডিপোজিট (<span id="depCount">0</span>)</p>
+      </a>
+
+      <a href="/admin-withdraw-review" class="bg-rose-500/20 border border-rose-500/40 p-4 rounded-2xl text-center space-y-1">
+        <p class="text-xs font-bold text-rose-300">💸 উইথড্র (<span id="withCount">0</span>)</p>
+      </a>
+
+      <a href="/admin-video-review" class="bg-amber-500/20 border border-amber-500/40 p-4 rounded-2xl text-center space-y-1">
+        <p class="text-xs font-bold text-amber-300">🎬 ভিডিও রিভিউ (<span id="vidCount">0</span>)</p>
+      </a>
+
+      <a href="/admin-audio-review" class="bg-indigo-500/20 border border-indigo-500/40 p-4 rounded-2xl text-center space-y-1">
+        <p class="text-xs font-bold text-indigo-300">🎙️ অডিও রিভিউ (<span id="audCount">0</span>)</p>
+      </a>
+
+      <a href="/admin-users" class="bg-cyan-500/20 border border-cyan-500/40 p-4 rounded-2xl text-center space-y-1">
+        <p class="text-xs font-bold text-cyan-300">👥 ইউজার লিস্ট (<span id="userCount">0</span>)</p>
+      </a>
+
+      <a href="/admin-support" class="bg-blue-500/20 border border-blue-500/40 p-4 rounded-2xl text-center space-y-1">
+        <p class="text-xs font-bold text-blue-300">💬 সাপোর্ট চ্যাট সেন্টার</p>
+      </a>
+    </div>
+
+    <!-- ডিপোজিট সেন্ড মানি নম্বর পরিবর্তন -->
+    <section class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-3">
+      <h3 class="text-sm font-bold text-emerald-400 flex items-center gap-2">
+        <i class="fa-solid fa-mobile-screen-button"></i> ডিপোজিট সেন্ড মানি নম্বর সেটআপ
+      </h3>
+      <div class="flex gap-2">
+        <input type="tel" id="depositNumInput" placeholder="যেমন: 01836345346" class="flex-grow bg-slate-950 border border-slate-800 p-3 rounded-xl text-xs text-emerald-400 font-mono font-bold focus:outline-none">
+        <button onclick="updateDepositNumber()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs">
+          নম্বর সেভ করুন
+        </button>
+      </div>
+    </section>
+
+    <!-- হোমপেজ স্ট্যাটস কন্ট্রোল -->
+    <section class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4">
+      <h3 class="text-sm font-bold text-amber-400 flex items-center gap-2">
+        <i class="fa-solid fa-chart-pie"></i> হোমপেজ স্ট্যাটস কন্ট্রোল
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1">মোট এক্টিভ ইউজার সংখ্যা:</label>
+          <input type="number" id="editActiveUsers" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl font-bold text-indigo-300">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">মোট সফল উইথড্র অ্যামাউন্ট (৳):</label>
+          <input type="number" id="editTotalWithdraw" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl font-bold text-emerald-400">
+        </div>
+      </div>
+      <button onclick="saveStats()" class="bg-amber-400 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs">
+        স্ট্যাটস সেভ করুন
+      </button>
+    </section>
+
+    <!-- নোটিস বোর্ড কন্ট্রোল -->
+    <section class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-3">
+      <h3 class="text-sm font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-bullhorn text-amber-400"></i> ইউজারের নোটিস বোর্ড কন্ট্রোল
+      </h3>
+      <div class="space-y-3">
+        <textarea id="noticeInput" rows="2" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-2xl text-xs text-amber-300 focus:outline-none" placeholder="নোটিস লিখুন..."></textarea>
+        <button onclick="updateNotice()" class="bg-amber-400 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs">
+          নোটিস পাবলিশ করুন
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    function getAdminHeader() {
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': localStorage.getItem('adminToken') || ''
+      };
+    }
+
+    function adminLogout() {
+      localStorage.removeItem('adminToken');
+      window.location.href = '/admin-login';
+    }
+
+    async function fetchStats() {
+      try {
+        const res = await fetch('/api/admin/stats', { headers: getAdminHeader() });
+        const data = await res.json();
+
+        if (res.status === 401) {
+          window.location.href = '/admin-login';
+          return;
+        }
+
+        if (data.status === 'success') {
+          document.getElementById('vidCount').innerText = data.pendingVideos;
+          document.getElementById('audCount').innerText = data.pendingAudios;
+          document.getElementById('depCount').innerText = data.pendingDeposits;
+          document.getElementById('withCount').innerText = data.pendingWithdraws;
+          document.getElementById('userCount').innerText = data.totalUsers;
+          document.getElementById('noticeInput').value = data.notice;
+          document.getElementById('depositNumInput').value = data.depositNumber || '01836345346';
+
+          document.getElementById('editActiveUsers').value = data.siteStats.activeUsersCount;
+          document.getElementById('editTotalWithdraw').value = data.siteStats.totalWithdrawAmount;
+        }
+      } catch (err) {
+        window.location.href = '/admin-login';
+      }
+    }
+
+    async function updateDepositNumber() {
+      const depositNumber = document.getElementById('depositNumInput').value;
+      const res = await fetch('/api/admin/update-deposit-number', {
+        method: 'POST',
+        headers: getAdminHeader(),
+        body: JSON.stringify({ depositNumber })
+      });
+      const data = await res.json();
+      if (data.status === 'success') alert('ডিপোজিট নম্বর পরিবর্তন হয়েছে!');
+    }
+
+    async function saveStats() {
+      const activeUsersCount = document.getElementById('editActiveUsers').value;
+      const totalWithdrawAmount = document.getElementById('editTotalWithdraw').value;
+
+      const res = await fetch('/api/admin/update-stats', {
+        method: 'POST',
+        headers: getAdminHeader(),
+        body: JSON.stringify({ activeUsersCount, totalWithdrawAmount })
+      });
+      const data = await res.json();
+      if (data.status === 'success') alert('স্ট্যাটস আপডেট হয়েছে!');
+    }
+
+    async function updateNotice() {
+      const notice = document.getElementById('noticeInput').value;
+      const res = await fetch('/api/admin/update-notice', {
+        method: 'POST',
+        headers: getAdminHeader(),
+        body: JSON.stringify({ notice })
+      });
+      const data = await res.json();
+      if (data.status === 'success') alert('নোটিস পাবলিশ হয়েছে!');
+    }
+
+    fetchStats();
+  </script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Security Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4 font-sans">
+
+  <div class="max-w-sm w-full bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-2xl space-y-5 text-center">
+    <div class="w-16 h-16 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-2xl flex items-center justify-center text-3xl mx-auto shadow-lg">
+      <i class="fa-solid fa-user-shield"></i>
+    </div>
+
+    <div>
+      <h2 class="text-lg font-black text-white">এডমিন সিকিউরিটি পোর্টাল</h2>
+      <p class="text-xs text-slate-400 mt-1">প্যানেলে প্রবেশ করতে পাসওয়ার্ড দিন</p>
+    </div>
+
+    <form onsubmit="handleAdminLogin(event)" class="space-y-4">
+      <div>
+        <input type="password" id="adminPassInput" placeholder="এডমিন পাসওয়ার্ড..." class="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-center text-amber-400 font-mono font-bold focus:outline-none" required>
+      </div>
+
+      <button type="submit" class="w-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-3 rounded-xl text-xs transition shadow-lg shadow-amber-400/20">
+        <i class="fa-solid fa-key mr-1"></i> আনলক প্যানেল
+      </button>
+    </form>
+
+    <div id="errMsg" class="text-xs text-rose-400 font-bold hidden bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20"></div>
+  </div>
+
+  <script>
+    async function handleAdminLogin(e) {
+      e.preventDefault();
+      const password = document.getElementById('adminPassInput').value;
+      const errMsg = document.getElementById('errMsg');
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+
+        if (data.status === 'success') {
+          localStorage.setItem('adminToken', data.token);
+          window.location.href = '/admin';
+        } else {
+          errMsg.innerText = data.message;
+          errMsg.classList.remove('hidden');
+        }
+      } catch (err) {
+        errMsg.innerText = "ভুল পাসওয়ার্ড!";
+        errMsg.classList.remove('hidden');
+      }
+    }
+  </script>
+</body>
+</html>

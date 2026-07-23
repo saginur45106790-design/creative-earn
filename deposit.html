@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deposit - CreativeEarn</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    .animate-pop-in { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+  </style>
+</head>
+<body class="bg-[#0F172A] text-slate-100 min-h-screen font-sans pb-12">
+
+  <nav class="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-40">
+    <div class="max-w-md mx-auto flex justify-between items-center">
+      <a href="/dashboard" class="text-xs text-amber-400 font-bold flex items-center gap-1.5">
+        <i class="fa-solid fa-arrow-left"></i> ড্যাশবোর্ড
+      </a>
+      <h1 class="text-sm font-black text-white">💰 ডিপোজিট করুন</h1>
+    </div>
+  </nav>
+
+  <!-- 🎉 কাস্টম পপ-আপ -->
+  <div id="customSuccessModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border-2 border-emerald-500/50 p-6 rounded-3xl max-w-xs w-full text-center space-y-4 shadow-2xl animate-pop-in">
+      <div class="w-16 h-16 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full flex items-center justify-center text-3xl mx-auto">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+      <div class="space-y-1">
+        <h3 id="customModalTitle" class="text-base font-black text-white">রিকোয়েস্ট জমা হয়েছে!</h3>
+        <p id="customModalMessage" class="text-xs text-slate-300">আপনার ডিপোজিট রিকোয়েস্ট সফলভাবে জমা হয়েছে।</p>
+      </div>
+      <div class="text-[10px] text-emerald-400 font-semibold animate-pulse">
+        ⏳ পেজটি স্বয়ংক্রিয়ভাবে রিফ্রেশ হচ্ছে...
+      </div>
+    </div>
+  </div>
+
+  <main class="max-w-md mx-auto p-4 space-y-6">
+
+    <!-- 🟢 সেন্ড মানি নম্বর বার -->
+    <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/50 border border-slate-800 p-5 rounded-3xl space-y-3 shadow-xl">
+      <h2 class="text-xs font-bold text-amber-400 flex items-center gap-2">
+        <i class="fa-solid fa-circle-info"></i> সেন্ড মানি করুন (bKash / Nagad / Rocket)
+      </h2>
+      
+      <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between gap-2 shadow-inner">
+        <div>
+          <span class="text-[11px] text-slate-400 block mb-0.5">এডমিন পার্সোনাল নম্বর:</span>
+          <b id="adminDepNum" class="text-sm font-mono text-emerald-400 select-all">01836345346</b>
+        </div>
+        <button type="button" onclick="copyDepNumber()" class="bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition shrink-0">
+          <i class="fa-solid fa-copy"></i> Copy
+        </button>
+      </div>
+      <p class="text-[11px] text-slate-400">টাকা পাঠানোর পর নিচের ফর্মে সঠিক তথ্য দিয়ে সাবমিট দিন।</p>
+    </div>
+
+    <form onsubmit="handleDepositSubmit(event)" class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-xl">
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">পেমেন্ট মেথড</label>
+        <select id="depMethod" class="w-full p-3 bg-slate-950 rounded-xl text-xs border border-slate-800 text-slate-200 focus:outline-none">
+          <option value="bKash">bKash</option>
+          <option value="Nagad">Nagad</option>
+          <option value="Rocket">Rocket</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">আপনার প্রেরক নম্বর</label>
+        <input type="tel" id="depSender" placeholder="018XXXXXXXX" class="w-full p-3 bg-slate-950 rounded-xl text-xs border border-slate-800 text-slate-200 focus:outline-none" required>
+      </div>
+
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">টাকার পরিমাণ (৳)</label>
+        <input type="number" id="depAmount" placeholder="100" class="w-full p-3 bg-slate-950 rounded-xl text-xs border border-slate-800 text-slate-200 focus:outline-none" required>
+      </div>
+
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">ট্রানজেকশন আইডি (TrxID)</label>
+        <input type="text" id="depTrxId" placeholder="TRX12345678" class="w-full p-3 bg-slate-950 rounded-xl text-xs border border-slate-800 text-slate-200 font-mono focus:outline-none" required>
+      </div>
+
+      <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3 rounded-xl text-xs transition shadow-lg shadow-emerald-500/20">
+        ডিপোজিট রিকোয়েস্ট পাঠান
+      </button>
+    </form>
+
+    <section class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-3 shadow-xl">
+      <h3 class="text-xs font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-clock-rotate-left text-amber-400"></i> আপনার ডিপোজিট লাইভ স্ট্যাটাস
+      </h3>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs min-w-[280px]">
+          <thead class="bg-slate-950 text-slate-400 uppercase text-[10px]">
+            <tr>
+              <th class="p-2.5">তারিখ</th>
+              <th class="p-2.5">অ্যামাউন্ট</th>
+              <th class="p-2.5">TrxID</th>
+              <th class="p-2.5">অবস্থা</th>
+            </tr>
+          </thead>
+          <tbody id="depHistoryTable" class="divide-y divide-slate-800 text-slate-300">
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    function copyDepNumber() {
+      const num = document.getElementById('adminDepNum').innerText;
+      navigator.clipboard.writeText(num);
+      alert('নম্বর কপি হয়েছে: ' + num);
+    }
+
+    async function loadTransactions() {
+      try {
+        const res = await fetch('/api/user/transactions');
+        const data = await res.json();
+        if (data.status === 'success') {
+          const tbody = document.getElementById('depHistoryTable');
+          if (data.deposits.length > 0) {
+            tbody.innerHTML = data.deposits.map(d => {
+              let badge = d.status === 'Approved'
+                ? '<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">Approved</span>'
+                : d.status === 'Rejected'
+                ? '<span class="bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full font-bold">Rejected</span>'
+                : '<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pending</span>';
+
+              return `
+                <tr>
+                  <td class="p-2.5">${d.date}</td>
+                  <td class="p-2.5 font-bold text-emerald-400">৳${d.amount}</td>
+                  <td class="p-2.5 font-mono text-[11px]">${d.trxId}</td>
+                  <td class="p-2.5">${badge}</td>
+                </tr>
+              `;
+            }).join('');
+          } else {
+            tbody.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-slate-500">কোনো ইতিহাস নেই</td></tr>';
+          }
+        }
+
+        const statRes = await fetch('/api/public-stats');
+        const statData = await statRes.json();
+        if (statData.status === 'success' && statData.depositNumber) {
+          document.getElementById('adminDepNum').innerText = statData.depositNumber;
+        }
+
+      } catch (err) { console.error(err); }
+    }
+
+    async function handleDepositSubmit(e) {
+      e.preventDefault();
+      const payload = {
+        method: document.getElementById('depMethod').value,
+        senderNumber: document.getElementById('depSender').value,
+        amount: document.getElementById('depAmount').value,
+        trxId: document.getElementById('depTrxId').value
+      };
+
+      try {
+        const res = await fetch('/api/user/deposit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.status === 'success') {
+          document.getElementById('customSuccessModal').classList.remove('hidden');
+          setTimeout(() => { window.location.reload(); }, 2500);
+        } else {
+          alert(data.message);
+        }
+      } catch (err) { alert('সমস্যা হয়েছে!'); }
+    }
+
+    loadTransactions();
+  </script>
+</body>
+</html>

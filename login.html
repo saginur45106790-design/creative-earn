@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login & Signup - CreativeEarn</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    .animated-bg { background: linear-gradient(-45deg, #0f172a, #1e1b4b, #311042, #0f172a); background-size: 400% 400%; animation: gradientBG 12s ease infinite; }
+    .glass-card { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); }
+    .neon-btn { box-shadow: 0 0 15px rgba(124, 58, 237, 0.5); transition: all 0.3s ease; }
+    .neon-btn:hover { box-shadow: 0 0 25px rgba(124, 58, 237, 0.8); transform: translateY(-2px); }
+    @keyframes float3D { 0%, 100% { transform: translateY(0px) rotate(0deg); } 50% { transform: translateY(-10px) rotate(5deg); } }
+    .float-icon { animation: float3D 5s ease-in-out infinite; }
+  </style>
+</head>
+<body class="animated-bg text-slate-100 min-h-screen flex flex-col justify-between font-sans relative overflow-x-hidden">
+
+  <!-- 🌌 অ্যানিমেটেড হেডার -->
+  <header class="relative z-10 pt-6 pb-2 text-center px-4">
+    <div class="max-w-md mx-auto flex items-center justify-center gap-3">
+      <div class="w-12 h-12 bg-gradient-to-tr from-purple-600 to-indigo-500 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg float-icon">
+        <i class="fa-solid fa-play"></i>
+      </div>
+      <div class="text-left">
+        <h1 class="text-2xl font-black text-white tracking-wide">Creative<span class="text-indigo-400">Earn</span></h1>
+        <p class="text-[11px] text-indigo-300 font-semibold">ভিডিও ও অডিও আপলোড করুন, আয় করুন প্রতিদিন</p>
+      </div>
+      <div class="w-12 h-12 bg-gradient-to-tr from-amber-400 to-yellow-300 rounded-2xl flex items-center justify-center text-slate-950 text-xl shadow-lg float-icon" style="animation-delay: 2s;">
+        <i class="fa-solid fa-coins"></i>
+      </div>
+    </div>
+  </header>
+
+  <!-- 📈 লাইভ স্ট্যাটস কাউন্টার -->
+  <div class="relative z-10 max-w-md mx-auto w-full px-4 my-2">
+    <div class="glass-card p-3 rounded-2xl grid grid-cols-2 gap-2 text-center shadow-2xl">
+      <div class="bg-slate-950/80 p-2.5 rounded-xl border border-indigo-500/20">
+        <span class="text-[10px] text-slate-400 block"><i class="fa-solid fa-users text-indigo-400 mr-1"></i> কাজ করছেন:</span>
+        <h4 id="statUsers" class="text-xs font-black text-indigo-300">১,৪৫০+ জন</h4>
+      </div>
+      <div class="bg-slate-950/80 p-2.5 rounded-xl border border-emerald-500/20">
+        <span class="text-[10px] text-slate-400 block"><i class="fa-solid fa-money-bill-check text-emerald-400 mr-1"></i> সফল উইথড্র:</span>
+        <h4 id="statWithdraw" class="text-xs font-black text-emerald-400">৳ ৪,৮৫,০০০+</h4>
+      </div>
+    </div>
+  </div>
+
+  <!-- 💎 গ্লাস-মরফিজম লগইন/সাইনআপ কার্ড -->
+  <main class="relative z-10 w-full max-w-md mx-auto p-4 my-auto">
+    <div class="glass-card p-6 rounded-3xl shadow-2xl space-y-4">
+      
+      <div class="grid grid-cols-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800 text-xs font-bold">
+        <button id="loginTabBtn" onclick="switchTab('login')" class="py-2.5 rounded-xl text-white bg-indigo-600 shadow-md transition">
+          <i class="fa-solid fa-right-to-bracket mr-1"></i> লগইন
+        </button>
+        <button id="signupTabBtn" onclick="switchTab('signup')" class="py-2.5 rounded-xl text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-user-plus mr-1"></i> সাইনআপ
+        </button>
+      </div>
+
+      <div id="alertBox" class="hidden p-3 rounded-xl border text-xs text-center font-bold"></div>
+
+      <!-- সাইনআপ ফর্ম -->
+      <form id="signupForm" onsubmit="handleAuth(event, 'signup')" class="space-y-3 hidden">
+        <div>
+          <label class="block text-[11px] text-slate-400 mb-1">আপনার নাম (Full Name)</label>
+          <input type="text" id="signupName" placeholder="যেমন: রহিম আহমেদ" class="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none" required>
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-400 mb-1">মোবাইল নম্বর</label>
+          <input type="tel" id="signupPhone" placeholder="018XXXXXXXX" class="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none" required>
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-400 mb-1">ইমেইল ঠিকানা</label>
+          <input type="email" id="signupEmail" placeholder="user@gmail.com" class="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none" required>
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-400 mb-1">পাসওয়ার্ড</label>
+          <input type="password" id="signupPassword" placeholder="******" class="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none" required>
+        </div>
+        <div>
+          <label class="block text-[11px] text-amber-300 mb-1">রেফার কোড (৫০৳ বোনাস পেতে)</label>
+          <input type="text" id="signupRefCode" placeholder="যেমন: CE1001" class="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-amber-300 font-mono focus:outline-none">
+        </div>
+        <button type="submit" class="w-full bg-indigo-600 neon-btn text-white font-black py-3 rounded-xl text-xs transition">
+          একাউন্ট তৈরি করুন (৫০৳ বোনাস)
+        </button>
+      </form>
+
+      <!-- লগইন ফর্ম -->
+      <form id="loginForm" onsubmit="handleAuth(event, 'login')" class="space-y-3.5">
+        <div>
+          <label class="block text-[11px] text-slate-400 mb-1">মোবাইল নম্বর</label>
+          <input type="tel" id="loginPhone" placeholder="018XXXXXXXX" class="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none" required>
+        </div>
+        <div>
+          <label class="block text-[11px] text-slate-400 mb-1">পাসওয়ার্ড</label>
+          <input type="password" id="loginPassword" placeholder="******" class="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none" required>
+        </div>
+        <button type="submit" class="w-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-3 rounded-xl text-xs transition shadow-lg shadow-amber-400/20">
+          লগইন করুন
+        </button>
+      </form>
+
+    </div>
+  </main>
+
+  <!-- ✨ ৩D ফিচার কার্ডস -->
+  <footer class="relative z-10 pb-6 px-4">
+    <div class="max-w-md mx-auto grid grid-cols-3 gap-2 text-center text-[10px] text-slate-400">
+      <div class="glass-card p-2.5 rounded-2xl border border-amber-500/20 shadow-md">
+        <i class="fa-solid fa-bolt text-amber-400 text-sm mb-1 block"></i>
+        <span class="font-bold text-slate-200">তড়িৎ পেমেন্ট</span>
+      </div>
+      <div class="glass-card p-2.5 rounded-2xl border border-indigo-500/20 shadow-md">
+        <i class="fa-solid fa-film text-indigo-400 text-sm mb-1 block"></i>
+        <span class="font-bold text-slate-200">এইচডি কনটেন্ট</span>
+      </div>
+      <div class="glass-card p-2.5 rounded-2xl border border-emerald-500/20 shadow-md">
+        <i class="fa-solid fa-shield-halved text-emerald-400 text-sm mb-1 block"></i>
+        <span class="font-bold text-slate-200">১০০% সিকিউরড</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('ref')) {
+      document.getElementById('signupRefCode').value = urlParams.get('ref');
+      switchTab('signup');
+    }
+
+    async function loadPublicStats() {
+      try {
+        const res = await fetch('/api/public-stats');
+        const data = await res.json();
+        if (data.status === 'success') {
+          document.getElementById('statUsers').innerText = `${data.stats.activeUsersCount.toLocaleString('en-US')}+ জন`;
+          document.getElementById('statWithdraw').innerText = `৳ ${data.stats.totalWithdrawAmount.toLocaleString('en-US')}+`;
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    function switchTab(type) {
+      const loginBtn = document.getElementById('loginTabBtn');
+      const signupBtn = document.getElementById('signupTabBtn');
+      const loginForm = document.getElementById('loginForm');
+      const signupForm = document.getElementById('signupForm');
+
+      if (type === 'signup') {
+        signupBtn.className = "py-2.5 rounded-xl text-white bg-indigo-600 shadow-md transition";
+        loginBtn.className = "py-2.5 rounded-xl text-slate-400 hover:text-white transition";
+        signupForm.classList.remove('hidden');
+        loginForm.classList.add('hidden');
+      } else {
+        loginBtn.className = "py-2.5 rounded-xl text-white bg-indigo-600 shadow-md transition";
+        signupBtn.className = "py-2.5 rounded-xl text-slate-400 hover:text-white transition";
+        loginForm.classList.remove('hidden');
+        signupForm.classList.add('hidden');
+      }
+    }
+
+    async function handleAuth(e, type) {
+      e.preventDefault();
+      const alertBox = document.getElementById('alertBox');
+      let payload = {};
+      let endpoint = type === 'signup' ? '/api/auth/signup' : '/api/auth/login';
+
+      if (type === 'signup') {
+        payload = {
+          name: document.getElementById('signupName').value,
+          phone: document.getElementById('signupPhone').value,
+          email: document.getElementById('signupEmail').value,
+          password: document.getElementById('signupPassword').value,
+          refCode: document.getElementById('signupRefCode').value
+        };
+      } else {
+        payload = {
+          phone: document.getElementById('loginPhone').value,
+          password: document.getElementById('loginPassword').value
+        };
+      }
+
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.status === 'success') {
+          confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+          alertBox.className = "p-3 rounded-xl border text-xs text-center font-bold bg-emerald-500/10 border-emerald-500 text-emerald-400";
+          alertBox.innerText = data.message;
+          alertBox.classList.remove('hidden');
+          setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
+        } else {
+          alertBox.className = "p-3 rounded-xl border text-xs text-center font-bold bg-rose-500/10 border-rose-500 text-rose-400";
+          alertBox.innerText = data.message;
+          alertBox.classList.remove('hidden');
+        }
+      } catch (err) { alert('সমস্যা হয়েছে!'); }
+    }
+
+    loadPublicStats();
+  </script>
+</body>
+</html>
