@@ -403,5 +403,92 @@
 
     loadDashboardData();
   </script>
+  <!-- 📸 এআই ফেস ভেরিফিকেশন ক্যামেরা মোডাল -->
+<div id="faceModal" class="hidden fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4">
+  <div class="bg-slate-900 border border-indigo-500/30 rounded-2xl p-5 max-w-sm w-full text-center space-y-4">
+    <h3 class="text-lg font-bold text-white flex items-center justify-center gap-2">
+      <i class="fa-solid fa-face-smile text-amber-400"></i> এআই ফেস ভেরিফিকেশন
+    </h3>
+    
+    <!-- ইনস্ট্রাকশন টেক্সট -->
+    <div id="stepInstruction" class="bg-indigo-950/60 border border-indigo-500/30 p-2.5 rounded-xl text-amber-300 text-sm font-semibold animate-pulse">
+      ধাপ ১: ক্যামেরার দিকে স্থির তাকিয়ে থাকুন...
+    </div>
+
+    <div class="relative w-48 h-48 mx-auto rounded-full overflow-hidden border-4 border-indigo-500 shadow-lg">
+      <video id="webcam" autoplay playsinline class="w-full h-full object-cover transform -scale-x-100"></video>
+      <canvas id="canvas" class="hidden"></canvas>
+    </div>
+
+    <button onclick="startFaceLivenessCheck()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg">
+      ক্যামেরা স্ক্যান শুরু করুন
+    </button>
+    <button onclick="closeFaceModal()" class="text-xs text-slate-400 underline">বাতিল করুন</button>
+  </div>
+</div>
+
+<script>
+let currentStep = 0;
+let stream = null;
+
+async function openFaceVerifyModal() {
+  document.getElementById('faceModal').classList.remove('hidden');
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    document.getElementById('webcam').srcObject = stream;
+  } catch(e) {
+    alert("ক্যামেরা ওপেন করা সম্ভব হয়নি! পারমিশন এলাউ করুন।");
+  }
+}
+
+function closeFaceModal() {
+  if(stream) stream.getTracks().forEach(t => t.stop());
+  document.getElementById('faceModal').classList.add('hidden');
+}
+
+function startFaceLivenessCheck() {
+  const steps = [
+    "ধাপ ১: ৩ সেকেন্ড স্থির থাকুন...",
+    "ধাপ ২: মাথা ধীরে ডানে ও বামে নাড়ান...",
+    "ধাপ ৩: চোখ দুইবার পিটপিট (Blink) করুন..."
+  ];
+  
+  let i = 0;
+  const timer = setInterval(() => {
+    if(i < steps.length) {
+      document.getElementById('stepInstruction').innerText = steps[i];
+      i++;
+    } else {
+      clearInterval(timer);
+      completeFaceVerify();
+    }
+  }, 2500);
+}
+
+function completeFaceVerify() {
+  const canvas = document.getElementById('canvas');
+  const video = document.getElementById('webcam');
+  canvas.width = video.videoWidth || 300;
+  canvas.height = video.videoHeight || 300;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  const faceImageData = canvas.toDataURL('image/jpeg');
+
+  fetch('/api/user/face-verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ faceImageData })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if(data.status === 'success') {
+      alert(data.message);
+      closeFaceModal();
+      location.reload();
+    } else {
+      alert(data.message);
+    }
+  });
+}
+</script>
 </body>
 </html>
