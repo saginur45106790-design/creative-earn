@@ -9,28 +9,14 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// 🔐 পার্মানেন্ট টোকেন ফাইল (সার্ভার রিস্টার্ট হলেও মুছবে না)
-const tokenFile = path.join(__dirname, 'tokens.json');
-let activeAdminTokens = new Set();
-if (fs.existsSync(tokenFile)) {
-  try {
-    const saved = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
-    activeAdminTokens = new Set(saved);
-  } catch (e) {}
-}
-
-function saveTokens() {
-  try {
-    fs.writeFileSync(tokenFile, JSON.stringify(Array.from(activeAdminTokens)));
-  } catch (e) {}
-}
-
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 app.use(express.static(__dirname));
 app.use('/uploads', express.static(uploadDir));
 
+// 🔐 এডমিন পাসওয়ার্ড ও স্থায়ী সিক্রেট টোকেন (সার্ভার রিস্টার্ট হলেও কখনো লক হবে না)
 const ADMIN_PASSWORD = "sajibbithi2828@";
+const STATIC_ADMIN_TOKEN = "ADM_PERMANENT_SECRET_TOKEN_CE_2026";
 
 let globalNotice = "🎉 CreativeEarn-এ আপনাকে স্বাগতম! ১০০ টাকা ডিপোজিট করে ফেস ভেরিফাই আনলক করুন এবং ইনকাম শুরু করুন।";
 let adminDepositNumber = "01836345346";
@@ -72,21 +58,19 @@ let supportThreads = {
   ]
 };
 
-// 🔑 এডমিন লগইন
+// 🔑 এডমিন লগইন API
 app.post('/api/admin/login', (req, res) => {
   const { password } = req.body;
   if (password === ADMIN_PASSWORD) {
-    const token = "ADM_TOKEN_" + Date.now() + "_" + Math.random().toString(36).substring(2);
-    activeAdminTokens.add(token);
-    saveTokens(); // ফাইলে সেভ হবে
-    return res.json({ status: 'success', token, message: 'এডমিন অ্যাক্সেস অনুমোদিত!' });
+    return res.json({ status: 'success', token: STATIC_ADMIN_TOKEN, message: 'এডমিন অ্যাক্সেস অনুমোদিত!' });
   }
   res.status(401).json({ status: 'error', message: 'ভুল এডমিন পাসওয়ার্ড!' });
 });
 
+// 🔐 এডমিন পারমিশন ভেরিফিকেশন মিডলওয়্যার
 function verifyAdminAuth(req, res, next) {
   const token = req.headers['authorization'];
-  if (token && activeAdminTokens.has(token)) {
+  if (token === STATIC_ADMIN_TOKEN) {
     return next();
   }
   res.status(401).json({ status: 'error', message: 'অননুমোদিত অ্যাক্সেস!' });
@@ -285,7 +269,7 @@ app.post('/api/upload-audio', (req, res) => {
   });
 });
 
-// 👑 ADMIN APIs
+// 👑 ADMIN APIs (Protected with Static Token)
 app.get('/api/admin/pending-deposits', verifyAdminAuth, (req, res) => res.json({ status: 'success', deposits: depositRequests.filter(d => d.status === 'Pending') }));
 
 app.post('/api/admin/review-deposit', verifyAdminAuth, (req, res) => {
