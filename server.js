@@ -9,14 +9,28 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+// 🔐 পার্মানেন্ট টোকেন ফাইল (সার্ভার রিস্টার্ট হলেও মুছবে না)
+const tokenFile = path.join(__dirname, 'tokens.json');
+let activeAdminTokens = new Set();
+if (fs.existsSync(tokenFile)) {
+  try {
+    const saved = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
+    activeAdminTokens = new Set(saved);
+  } catch (e) {}
+}
+
+function saveTokens() {
+  try {
+    fs.writeFileSync(tokenFile, JSON.stringify(Array.from(activeAdminTokens)));
+  } catch (e) {}
+}
+
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 app.use(express.static(__dirname));
 app.use('/uploads', express.static(uploadDir));
 
-// 🔐 এডমিন পাসওয়ার্ড
 const ADMIN_PASSWORD = "sajibbithi2828@";
-let activeAdminTokens = new Set();
 
 let globalNotice = "🎉 CreativeEarn-এ আপনাকে স্বাগতম! ১০০ টাকা ডিপোজিট করে ফেস ভেরিফাই আনলক করুন এবং ইনকাম শুরু করুন।";
 let adminDepositNumber = "01836345346";
@@ -64,6 +78,7 @@ app.post('/api/admin/login', (req, res) => {
   if (password === ADMIN_PASSWORD) {
     const token = "ADM_TOKEN_" + Date.now() + "_" + Math.random().toString(36).substring(2);
     activeAdminTokens.add(token);
+    saveTokens(); // ফাইলে সেভ হবে
     return res.json({ status: 'success', token, message: 'এডমিন অ্যাক্সেস অনুমোদিত!' });
   }
   res.status(401).json({ status: 'error', message: 'ভুল এডমিন পাসওয়ার্ড!' });
@@ -93,7 +108,6 @@ app.post('/api/auth/signup', (req, res) => {
   let initialBalance = 0;
   let referrerObj = null;
 
-  // রেফার কোড থাকলে ইউজার (খ) সাথে সাথে ৫০ টাকা পাবে
   if (refCode) {
     referrerObj = registeredUsers.find(u => u.refCode.trim() === refCode.trim());
     if (referrerObj) {
@@ -159,7 +173,6 @@ app.get('/api/user/dashboard-data', (req, res) => {
   });
 });
 
-// 📸 ফেস ভেরিফিকেশন সেভ
 app.post('/api/user/face-verify', (req, res) => {
   const { faceImageData } = req.body;
   if (!activeUser.hasDeposited100) {
@@ -174,7 +187,6 @@ app.post('/api/user/face-verify', (req, res) => {
   res.json({ status: 'success', message: '🎉 ফেস ভেরিফিকেশন সফল হয়েছে! লক খুলে গেছে।' });
 });
 
-// 💰 ডিপোজিট & উইথড্র
 app.post('/api/user/deposit', (req, res) => {
   const { method, senderNumber, amount, trxId } = req.body;
   if (!method || !senderNumber || !amount || !trxId) return res.status(400).json({ status: 'error', message: 'সব ঘর সঠিকভাবে দিন!' });
@@ -213,7 +225,6 @@ app.get('/api/user/transactions', (req, res) => {
   res.json({ status: 'success', userBalance: activeUser.balance, deposits: depositRequests.filter(d => d.userPhone === activeUser.phone), withdraws: withdrawRequests.filter(w => w.userPhone === activeUser.phone) });
 });
 
-// 🎬 ভিডিও আপলোড
 app.post('/api/upload-video', (req, res) => {
   if (!activeUser.hasDeposited100) {
     return res.status(403).json({ status: 'error', message: 'কমপক্ষে ১০০ টাকা ডিপোজিট এপ্রুভ হতে হবে!' });
@@ -240,7 +251,7 @@ app.post('/api/upload-video', (req, res) => {
       fileName: cleanFileName,
       fileUrl: `/uploads/${cleanFileName}`,
       userFaceImage: activeUser.faceImageData,
-      faceMatchStatus: "MATCHED", // অটোমেটিক ফেস ডিটেকশন ও চেক
+      faceMatchStatus: "MATCHED",
       date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
       status: 'In Review', amount: 0, rating: 0, comment: '', notified: false
     });
@@ -277,7 +288,6 @@ app.post('/api/upload-audio', (req, res) => {
 // 👑 ADMIN APIs
 app.get('/api/admin/pending-deposits', verifyAdminAuth, (req, res) => res.json({ status: 'success', deposits: depositRequests.filter(d => d.status === 'Pending') }));
 
-// 🔴 ডিপোজিট এপ্রুভ হলে ইউজার (ক) ৫০ টাকা কমিশন পাবে
 app.post('/api/admin/review-deposit', verifyAdminAuth, (req, res) => {
   const { id, status } = req.body;
   const dep = depositRequests.find(d => d.id === id);
@@ -289,9 +299,8 @@ app.post('/api/admin/review-deposit', verifyAdminAuth, (req, res) => {
         usr.balance += dep.amount;
 
         if (dep.amount >= 100) {
-          usr.hasDeposited100 = true; // ফেস ভেরিফাই অপশন আনলক হবে
+          usr.hasDeposited100 = true;
 
-          // ইউজার (ক)-কে ৫০ টাকা বোনাস দেওয়া
           if (usr.referredBy && !usr.referralBonusClaimed) {
             const referrerObj = registeredUsers.find(u => u.refCode === usr.referredBy);
             if (referrerObj) {
